@@ -1,33 +1,61 @@
 import { Play, Loader2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 export default function ScenarioSelector({ scenarios, selectedId, onSelect, onRun, running }) {
   return (
-    <div className="flex items-center gap-3 flex-wrap">
-      <div className="flex gap-2 flex-wrap">
-        {scenarios.map((s) => (
-          <button
-            key={s.id}
-            onClick={() => onSelect(s.id)}
-            disabled={running}
-            className={`px-3 py-2 rounded-lg border text-sm transition disabled:opacity-50 ${
-              selectedId === s.id
-                ? 'border-aegis-accent bg-aegis-accent/10 text-aegis-accent'
-                : 'border-aegis-border bg-aegis-panel2 text-aegis-text hover:border-aegis-accent/50'
-            }`}
+    <div className="flex items-center gap-2 flex-wrap ml-auto">
+      {scenarios.map((s, i) => (
+        <button
+          key={s.id}
+          onClick={() => onSelect(s.id)}
+          disabled={running}
+          className={cn(
+            'group rounded-xl border px-3.5 py-2.5 text-left transition-all disabled:opacity-50 max-w-[220px]',
+            selectedId === s.id
+              ? 'border-primary bg-primary text-primary-foreground shadow-md'
+              : 'border-border bg-card text-foreground hover:border-primary/40 hover:bg-secondary'
+          )}
+        >
+          <div className="flex items-baseline gap-1.5">
+            <span
+              className={cn(
+                'font-mono font-bold text-[10px]',
+                selectedId === s.id ? 'text-aegis-accent2' : 'text-accent'
+              )}
+            >
+              0{i + 1}
+            </span>
+            <span className="text-[13px] font-semibold leading-tight truncate">{s.name}</span>
+          </div>
+          <div
+            className={cn(
+              'text-[10px] mt-0.5 leading-tight truncate',
+              selectedId === s.id ? 'text-primary-foreground/70' : 'text-muted-foreground'
+            )}
           >
-            <div className="font-semibold leading-tight">{s.name}</div>
-            <div className="text-[10px] text-aegis-muted mt-0.5">{s.subtitle}</div>
-          </button>
-        ))}
-      </div>
+            {s.subtitle}
+          </div>
+        </button>
+      ))}
 
-      <button
+      <Button
         onClick={onRun}
         disabled={!selectedId || running}
-        className="ml-auto px-5 py-2.5 rounded-lg bg-aegis-accent text-aegis-bg font-bold hover:bg-aegis-accent/90 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+        variant="accent"
+        size="lg"
+        className="ml-2"
       >
-        {running ? <><Loader2 size={16} className="animate-spin" />Pokrecem...</> : <><Play size={16} fill="currentColor" />POKRENI DEMO</>}
-      </button>
+        {running ? (
+          <>
+            <Loader2 size={16} className="animate-spin" /> Running...
+          </>
+        ) : (
+          <>
+            <Play size={16} fill="currentColor" /> Run demo
+          </>
+        )}
+      </Button>
     </div>
   )
 }

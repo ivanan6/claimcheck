@@ -1,7 +1,7 @@
 """
-Pydantic modeli koji opisuju strukture podataka koji teku kroz sistem.
-EDI 837 je internacionalni standard za zdravstvene zahteve - mi ga ovde
-predstavljamo kao pojednostavljen JSON da bi demo bio jasan.
+Pydantic models describing the data structures that move through the system.
+EDI 837 is an international standard for healthcare claims; here we represent it
+as simplified JSON to keep the demo clear.
 """
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from typing import List, Literal, Optional
 from pydantic import BaseModel, Field
 
 
-# ---------- Klinika -> Clearinghouse ----------
+# ---------- Clinic -> Clearinghouse ----------
 
 class Patient(BaseModel):
     patient_id: str
@@ -20,34 +20,38 @@ class Patient(BaseModel):
 
 
 class BillLineItem(BaseModel):
-    """Jedna stavka racuna - sto je sestra unela na salteru."""
-    cpt_code: str = Field(..., description="CPT kod procedure, npr. 76700 (Ultrazvuk abdomena)")
+    """One bill line item entered by front-desk staff."""
+    cpt_code: str = Field(..., description="Procedure CPT code, e.g. 76700 (abdominal ultrasound)")
     description: str
     icd10_codes: List[str] = Field(
         default_factory=list,
-        description="ICD-10 dijagnostiocke sifre koje opravdavaju ovu proceduru. "
-                    "Ovo je polje gde nastaje 85% gresaka.",
+        description="ICD-10 diagnosis codes that justify this procedure. "
+                    "This is the field where 85% of errors happen.",
     )
     unit_price_eur: float
     quantity: int = 1
 
 
 class EDI837Packet(BaseModel):
-    """Standardizovani digitalni paket koji klinika salje kroz clearinghouse."""
+    """Standardized digital packet the clinic sends through the clearinghouse."""
     packet_id: str
     clinic_name: str
     clinic_id: str
     patient: Patient
-    doctor_note: str = Field(..., description="Slobodan tekst koji je lekar napisao u nalazu")
+    doctor_note: str = Field(..., description="Free-text note written by the physician")
     bill_items: List[BillLineItem]
+    supporting_documents: List[str] = Field(
+        default_factory=list,
+        description="Documents attached to the claim package before sending to insurance.",
+    )
     insurance_company: str
     submitted_at: str  # ISO timestamp
 
 
-# ---------- Output agenata ----------
+# ---------- Agent output ----------
 
 class ExtractedClinicalFinding(BaseModel):
-    """Sta je Agent 1 (Medical Coder) izvukao iz teksta lekara."""
+    """What Agent 1 (Medical Coder) extracted from the physician's note."""
     finding: str
     suggested_icd10: str
     confidence: float
@@ -55,7 +59,7 @@ class ExtractedClinicalFinding(BaseModel):
 
 
 class ContractRule(BaseModel):
-    """Pravilo koje je Agent 2 (Contract Lawyer) pronasao u ugovoru osiguranja."""
+    """Rule Agent 2 (Contract Lawyer) found in the insurance contract."""
     rule_id: str
     procedure_cpt: str
     requires_icd10_categories: List[str]
@@ -64,7 +68,7 @@ class ContractRule(BaseModel):
 
 
 class AuditIssue(BaseModel):
-    """Konkretna greska koju je Agent 3 (Auditor) pronasao."""
+    """Concrete error found by Agent 3 (Auditor)."""
     severity: Literal["error", "warning"]
     line_item_cpt: str
     issue_type: Literal[
@@ -72,13 +76,14 @@ class AuditIssue(BaseModel):
         "icd10_procedure_mismatch",
         "contract_limit_violation",
         "duplicate_billing",
+        "missing_required_documentation",
     ]
     explanation: str
-    suggested_fix: dict  # {"add_icd10": ["R10.9"]} ili {"remove_cpt": "..."} itd.
+    suggested_fix: dict  # {"add_icd10": ["R10.9"]} or {"remove_cpt": "..."} etc.
 
 
 class AegisDecision(BaseModel):
-    """Konacan odgovor koji clearinghouse dobija od Aegis filtera."""
+    """Final response the clearinghouse receives from the Aegis filter."""
     packet_id: str
     status: Literal["approved", "rejected"]
     processing_time_ms: int
@@ -86,4 +91,4 @@ class AegisDecision(BaseModel):
     agent2_rules: List[ContractRule]
     agent3_issues: List[AuditIssue]
     estimated_saved_eur: float
-    narrator_steps: List[str]  # Za Loom overlay - kratki opisi koraka
+    narrator_steps: List[str]  # Short step descriptions for the Loom overlay

@@ -1,11 +1,13 @@
 """
-Tri pripremljena scenarija za demo snimak.
+Four prepared scenarios for the demo recording.
 
-Scenario A (hero) - sestra je zaboravila ICD-10 sifru za bol u stomaku.
-                    Agent 1 hvata kontekst iz teksta lekara, Agent 3 nudi 1-click fix.
-Scenario B (clean) - sve je u redu, prolazi kroz pipeline za par sekundi.
-Scenario C (graph rag hero) - MRI mozga koji krsi ogranicenje ugovora (6 meseci).
-                              Agent 2 hvata krsenje pravila iz ugovora.
+Scenario A (hero) - nurse forgot the ICD-10 code for stomach pain.
+                    Agent 1 captures context from the doctor's note, Agent 3 offers 1-click fix.
+Scenario B (clean) - everything is fine, passes through the pipeline in seconds.
+Scenario C (graph rag hero) - brain MRI requested before contract's 6-month limit.
+                              Agent 2 catches the rule violation from the contract.
+Scenario D (missing documents) - bill has the right CPT and ICD-10, but the claim
+                                 package is missing policy-required attachments.
 """
 from models import BillLineItem, EDI837Packet, Patient
 
@@ -13,7 +15,7 @@ from models import BillLineItem, EDI837Packet, Patient
 def scenario_a_missing_icd10() -> EDI837Packet:
     return EDI837Packet(
         packet_id="EDI-2026-05-24-00781",
-        clinic_name="Poliklinika Sveti Sava",
+        clinic_name="St. Sava Medical Center",
         clinic_id="RS-CLI-00214",
         patient=Patient(
             patient_id="PAT-44871",
@@ -22,19 +24,19 @@ def scenario_a_missing_icd10() -> EDI837Packet:
             insurance_id="GH-887-441-22",
         ),
         doctor_note=(
-            "Pacijent dosao na pregled zbog ostrog probadajuceg bola "
-            "ispod levog rebranog luka koji traje vec 3 dana. "
-            "Bol se pojacava pri dubokom udisaju i savijanju. "
-            "Nema groznice, nema povracanja. Apetit smanjen. "
-            "Palpacijom uocena osetljivost u levom hipohondrijumu. "
-            "Indikujem ultrazvuk abdomena radi iskljucivanja patologije "
-            "slezine i pankreasa. Pacijenta uputiti na kontrolu nakon nalaza."
+            "Patient came in for examination due to sharp stabbing pain "
+            "below the left costal arch lasting 3 days. "
+            "Pain worsens with deep inhalation and bending. "
+            "No fever, no vomiting. Decreased appetite. "
+            "Palpation revealed tenderness in the left hypochondrium. "
+            "Indicating abdominal ultrasound to rule out spleen and pancreas pathology. "
+            "Refer patient for follow-up after results."
         ),
         bill_items=[
             BillLineItem(
                 cpt_code="76700",
-                description="Ultrazvuk abdomena, kompletan",
-                icd10_codes=[],  # GRESKA: sestra je zaboravila ICD-10!
+                description="Abdominal ultrasound, complete",
+                icd10_codes=[],  # ERROR: nurse forgot ICD-10!
                 unit_price_eur=85.00,
                 quantity=1,
             ),
@@ -47,7 +49,7 @@ def scenario_a_missing_icd10() -> EDI837Packet:
 def scenario_b_clean_bill() -> EDI837Packet:
     return EDI837Packet(
         packet_id="EDI-2026-05-24-00782",
-        clinic_name="Poliklinika Sveti Sava",
+        clinic_name="St. Sava Medical Center",
         clinic_id="RS-CLI-00214",
         patient=Patient(
             patient_id="PAT-39102",
@@ -56,23 +58,23 @@ def scenario_b_clean_bill() -> EDI837Packet:
             insurance_id="GH-552-118-09",
         ),
         doctor_note=(
-            "Rutinski godisnji sistematski pregled. "
-            "Pacijentkinja se ne zali na tegobe. "
-            "Krvni pritisak 120/80 mmHg. Telesna temperatura 36.6 C. "
-            "Auskultacijom srca i pluca nalaz uredan. "
-            "Preporucujem kompletnu krvnu sliku u sklopu sistematskog pregleda."
+            "Routine annual physical examination. "
+            "Patient reports no complaints. "
+            "Blood pressure 120/80 mmHg. Body temperature 36.6 C. "
+            "Auscultation of heart and lungs reveals normal findings. "
+            "Recommending complete blood count as part of the physical examination."
         ),
         bill_items=[
             BillLineItem(
                 cpt_code="99396",
-                description="Periodicni sistematski pregled, odrasli 40-64 god",
+                description="Periodic physical examination, adults 40-64",
                 icd10_codes=["Z00.00"],
                 unit_price_eur=120.00,
                 quantity=1,
             ),
             BillLineItem(
                 cpt_code="85025",
-                description="Kompletna krvna slika sa diferencijalom",
+                description="Complete blood count with differential",
                 icd10_codes=["Z00.00"],
                 unit_price_eur=25.00,
                 quantity=1,
@@ -84,9 +86,12 @@ def scenario_b_clean_bill() -> EDI837Packet:
 
 
 def scenario_c_contract_violation() -> EDI837Packet:
+    """Pre-authorization (EDI 278) - procedure NOT YET performed, clinic is asking
+    insurance for approval BEFORE scheduling. Aegis intercepts and stops it before
+    the MRI is performed - 320 EUR really saved."""
     return EDI837Packet(
-        packet_id="EDI-2026-05-24-00783",
-        clinic_name="Poliklinika Sveti Sava",
+        packet_id="AUTH-2026-05-24-00783",
+        clinic_name="St. Sava Medical Center",
         clinic_id="RS-CLI-00214",
         patient=Patient(
             patient_id="PAT-21055",
@@ -95,16 +100,19 @@ def scenario_c_contract_violation() -> EDI837Packet:
             insurance_id="GH-201-993-71",
         ),
         doctor_note=(
-            "Pacijent se zali na ucestale glavobolje u poslednjih mesec dana. "
-            "Glavobolje su tupe, lokalizovane u frontalnoj regiji, traju 2-4 sata. "
-            "Neuroloski pregled bez fokalnih ispada. "
-            "S obzirom da je pacijent imao MRI mozga pre 2 meseca sa urednim nalazom, "
-            "ali zbog pojacanog intenziteta glavobolja, indikujem kontrolni MRI mozga."
+            "PRE-AUTHORIZATION REQUEST. "
+            "Patient reports frequent headaches over the past month. "
+            "Headaches are dull, localized in the frontal region, lasting 2-4 hours. "
+            "Neurological examination shows no focal deficits. "
+            "Given that the patient had a brain MRI 2 months ago with normal findings, "
+            "but due to increased headache intensity, I propose scheduling "
+            "a follow-up brain MRI for next week. "
+            "Requesting coverage confirmation from insurance before scheduling the appointment."
         ),
         bill_items=[
             BillLineItem(
                 cpt_code="70551",
-                description="MRI mozga bez kontrasta",
+                description="Brain MRI without contrast (PLANNED - not yet performed)",
                 icd10_codes=["R51"],
                 unit_price_eur=320.00,
                 quantity=1,
@@ -115,24 +123,66 @@ def scenario_c_contract_violation() -> EDI837Packet:
     )
 
 
+def scenario_d_missing_documents() -> EDI837Packet:
+    return EDI837Packet(
+        packet_id="EDI-2026-05-24-00784",
+        clinic_name="St. Sava Medical Center",
+        clinic_id="RS-CLI-00214",
+        patient=Patient(
+            patient_id="PAT-77420",
+            full_name="Milan Radovanovic",
+            date_of_birth="1972-01-18",
+            insurance_id="GH-774-220-18",
+        ),
+        doctor_note=(
+            "Patient is 3 weeks after arthroscopic repair of the right knee meniscus. "
+            "Reports stiffness, limited flexion to 95 degrees, and pain during stairs. "
+            "Orthopedic follow-up recommends supervised therapeutic exercise twice weekly "
+            "for 3 weeks to restore range of motion and quadriceps strength. "
+            "Billing six sessions of therapeutic exercise after the first completed week."
+        ),
+        bill_items=[
+            BillLineItem(
+                cpt_code="97110",
+                description="Therapeutic exercises to develop strength and range of motion",
+                icd10_codes=["S83.241D", "M25.561"],
+                unit_price_eur=45.00,
+                quantity=6,
+            ),
+        ],
+        supporting_documents=[
+            "orthopedic_followup_note.pdf",
+            "invoice_line_items.csv",
+        ],
+        insurance_company="Global Health Insurance",
+        submitted_at="2026-05-24T10:06:12Z",
+    )
+
+
 SCENARIOS = {
     "scenario_a": {
-        "name": "Greska: nedostaje ICD-10 sifra",
-        "subtitle": "Sestra je zaboravila da poveze simptome sa procedurom",
+        "name": "Error: missing ICD-10 code",
+        "subtitle": "Nurse forgot to link symptoms to the procedure",
         "loader": scenario_a_missing_icd10,
         "expected_outcome": "rejected_with_autofix",
     },
     "scenario_b": {
-        "name": "Cist racun",
-        "subtitle": "Rutinski pregled koji prolazi kroz AI filter",
+        "name": "Clean bill",
+        "subtitle": "Routine check-up passing through the AI filter",
         "loader": scenario_b_clean_bill,
         "expected_outcome": "approved",
     },
     "scenario_c": {
-        "name": "Krsenje ugovora",
-        "subtitle": "MRI mozga koji krsi vremensko ogranicenje od 6 meseci",
+        "name": "Pre-authorization stopped",
+        "subtitle": "MRI scheduled, Aegis stops it BEFORE the procedure (contract violation)",
         "loader": scenario_c_contract_violation,
         "expected_outcome": "rejected_contract",
+    },
+    "scenario_d": {
+        "name": "Missing documents",
+        "subtitle": "Aegis predicts which attachments the insurer will require",
+        "loader": scenario_d_missing_documents,
+        "expected_outcome": "rejected_missing_documents",
     },
 }
 
@@ -140,7 +190,7 @@ SCENARIOS = {
 PATIENT_HISTORY = {
     "PAT-21055": {
         "previous_procedures": [
-            {"cpt": "70551", "date": "2026-03-15", "result": "uredan nalaz"}
+            {"cpt": "70551", "date": "2026-03-15", "result": "normal findings"}
         ]
     },
 }

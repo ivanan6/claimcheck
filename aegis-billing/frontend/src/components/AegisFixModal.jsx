@@ -43,10 +43,10 @@ export default function AegisFixModal({ open, issues, findings, onApply, onClose
                 </div>
                 <div className="flex-1">
                   <div className="font-bold text-aegis-danger">
-                    AEGIS UPOZORENJE - Racun ne moze biti poslat
+                    AEGIS WARNING - Bill cannot be sent
                   </div>
                   <div className="text-xs text-aegis-text/80">
-                    AI je presreo {proposedFixes.length} gresaka pre slanja osiguranju
+                    AI intercepted {proposedFixes.length} errors before sending to insurance
                   </div>
                 </div>
                 <button onClick={onClose} className="text-aegis-muted hover:text-aegis-text transition">
@@ -57,8 +57,8 @@ export default function AegisFixModal({ open, issues, findings, onApply, onClose
               <div className="p-5 space-y-4 max-h-[60vh] overflow-y-auto">
                 {proposedFixes.length === 0 && (
                   <div className="text-sm text-aegis-muted text-center py-6">
-                    Nije moguce automatski generisati ispravku za ove greske.
-                    <br />Potrebna je rucna intervencija lekara.
+                    Cannot automatically generate a correction for these errors.
+                    <br />Manual physician intervention is required.
                   </div>
                 )}
 
@@ -77,16 +77,16 @@ export default function AegisFixModal({ open, issues, findings, onApply, onClose
                         {fix.action === 'add_icd10' && fix.codes?.length > 0 && (
                           <div className="mt-3 bg-aegis-accent/5 border border-aegis-accent/30 rounded p-3">
                             <div className="text-[10px] uppercase tracking-wider text-aegis-accent mb-1.5 flex items-center gap-1">
-                              <Sparkles size={11} /> Predlog AI agenta
+                              <Sparkles size={11} /> AI agent suggestion
                             </div>
                             <div className="text-sm">
-                              Dodati ICD-10 sifru{' '}
+                              Add ICD-10 code{' '}
                               {fix.codes.map((c) => (
                                 <span key={c} className="inline-block font-mono font-bold bg-aegis-accent/20 text-aegis-accent px-1.5 py-0.5 rounded mx-0.5">
                                   {c}
                                 </span>
                               ))}{' '}
-                              uz proceduru CPT <span className="font-mono">{fix.to_cpt}</span>
+                              to CPT procedure <span className="font-mono">{fix.to_cpt}</span>
                             </div>
                           </div>
                         )}
@@ -108,7 +108,7 @@ export default function AegisFixModal({ open, issues, findings, onApply, onClose
                   disabled={busy}
                   className="px-4 py-2.5 rounded-lg text-sm text-aegis-muted hover:text-aegis-text transition disabled:opacity-40"
                 >
-                  Odbaci
+                  Dismiss
                 </button>
                 <button
                   onClick={() => onApply(proposedFixes.map((p) => p.fix))}
@@ -116,7 +116,7 @@ export default function AegisFixModal({ open, issues, findings, onApply, onClose
                   className="flex-1 px-4 py-2.5 rounded-lg bg-aegis-accent text-aegis-bg font-bold hover:bg-aegis-accent/90 transition flex items-center justify-center gap-2 disabled:opacity-40"
                 >
                   <Sparkles size={16} />
-                  {busy ? 'Primenjujem ispravke...' : '1-Click Auto-Dopuna i ponovo posalji'}
+                  {busy ? 'Applying fixes...' : '1-Click Auto-Fill and resend'}
                 </button>
               </div>
             </div>

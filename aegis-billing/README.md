@@ -1,45 +1,45 @@
 # AegisBilling.ai - Demo (pitch)
 
-Live demo verzija AegisBilling.ai sistema — **AI filtera unutar klirinške kuće** koji
-presreće zdravstvene račune pre nego što stignu osiguravajućoj kući, hvata greške i
-sestri na šalteru nudi **"1-Click Auto-Dopunu"**.
+Live demo version of the AegisBilling.ai system: an **AI filter inside a
+clearinghouse** that intercepts healthcare claims before they reach the insurer,
+catches errors, and offers front-desk staff a **"1-Click Auto-Fill"** fix.
 
-Demo prikazuje sva tri stejkholdera **side-by-side**:
+The demo shows all three stakeholders **side by side**:
 
-```
-[Klinika] ──▶ [Clearinghouse + Aegis AI Filter (3 agenta)] ──▶ [Osiguravajuća kuća]
+```text
+[Clinic] --> [Clearinghouse + Aegis AI Filter (3 agents)] --> [Insurance Company]
 ```
 
 - **Backend**: Python 3.10+ / FastAPI / **Google Gemini API** (free tier, gemini-2.0-flash)
 - **Frontend**: React 18 + Vite + Tailwind CSS + Framer Motion
-- **Ulazni podaci**: mockovani (lekarski nalazi, EDI 837 paketi, ugovori osiguranja).
-  AI agenti rade **pravu LLM analizu** preko Gemini API-ja nad tim podacima.
+- **Input data**: mocked physician notes, EDI 837 packets, and insurance contracts.
+  AI agents perform **real LLM analysis** through the Gemini API over that data.
 
 ---
 
-## Brzo pokretanje (5 minuta)
+## Quick Start (5 minutes)
 
-### 1. Dobijte besplatan Gemini API ključ
+### 1. Get a free Gemini API key
 
-- Otvorite https://aistudio.google.com/apikey
-- Kliknite **"Create API key"** → izaberete postojeći GCP projekat ili napravite novi
-- Kopirajte ključ (počinje sa `AIza...`)
-- **Besplatan tier:** 15 zahteva/min, 1M tokena/dan — više nego dovoljno za demo
+- Open https://aistudio.google.com/apikey
+- Click **"Create API key"** and choose an existing GCP project or create a new one
+- Copy the key (it starts with `AIza...`)
+- **Free tier:** 15 requests/min, 1M tokens/day, more than enough for the demo
 
-### 2. Podesite backend
+### 2. Configure the backend
 
 ```bash
 cd aegis-billing/backend
 cp .env.example .env
 ```
 
-Otvorite `.env` u editoru i upišite ključ:
+Open `.env` in your editor and add the key:
 
-```
-GEMINI_API_KEY=AIza...vaš ključ ovde
+```env
+GEMINI_API_KEY=AIza...your_key_here
 ```
 
-Zatim instalirajte i pokrenite:
+Then install and run:
 
 ```bash
 python -m venv .venv
@@ -48,13 +48,13 @@ pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 ```
 
-Backend je sada na `http://localhost:8000`. Otvorite `http://localhost:8000/docs` da
-vidite sve endpointe (Swagger UI). Otvorite `http://localhost:8000/` da proverite
-da li je ključ pravilno učitan (`"has_api_key": true`).
+The backend is now at `http://localhost:8000`. Open `http://localhost:8000/docs`
+to see all endpoints (Swagger UI). Open `http://localhost:8000/` to verify that
+the key is loaded correctly (`"has_api_key": true`).
 
-### 3. Pokrenite frontend
+### 3. Run the frontend
 
-U drugom terminalu:
+In another terminal:
 
 ```bash
 cd aegis-billing/frontend
@@ -62,142 +62,156 @@ npm install
 npm run dev
 ```
 
-Otvorite `http://localhost:5173` — to je glavni demo ekran.
+Open `http://localhost:5173`; this is the main demo screen.
 
 ---
 
-## Arhitektura
+## Architecture
 
-```
+```text
 aegis-billing/
 ├── backend/
-│   ├── main.py                    # FastAPI: endpointi + SSE streaming
-│   ├── models.py                  # Pydantic modeli (EDI 837 paket, Decision...)
-│   ├── mock_responses.py          # Fallback ako MOCK_MODE=true
+│   ├── main.py                    # FastAPI: endpoints + SSE streaming
+│   ├── models.py                  # Pydantic models (EDI 837 packet, Decision...)
+│   ├── mock_responses.py          # Fallback when MOCK_MODE=true
 │   ├── agents/
 │   │   ├── llm_client.py          # Google Gen AI SDK wrapper (Gemini)
-│   │   ├── medical_coder.py       # Agent 1 — čita lekarski nalaz
-│   │   ├── contract_lawyer.py     # Agent 2 — Graph RAG nad ugovorom
-│   │   └── auditor.py             # Agent 3 — unakrsna provera
+│   │   ├── medical_coder.py       # Agent 1 - reads physician notes
+│   │   ├── contract_lawyer.py     # Agent 2 - Graph RAG over the contract
+│   │   └── auditor.py             # Agent 3 - cross-checking
 │   └── mock_data/
-│       ├── scenarios.py           # 3 pripremljena scenarija
-│       └── insurance_contracts.py # Mockovani ugovor osiguranja
+│       ├── scenarios.py           # 3 prepared scenarios
+│       └── insurance_contracts.py # Mock insurance contract
 │
 └── frontend/
     ├── index.html
     ├── package.json
-    ├── vite.config.js             # Proxy na backend (localhost:8000)
+    ├── vite.config.js             # Proxy to backend (localhost:8000)
     ├── tailwind.config.js
     └── src/
-        ├── App.jsx                # Glavni layout + orkestracija
-        ├── lib/api.js             # API + SSE klijent
+        ├── App.jsx                # Main layout + orchestration
+        ├── lib/api.js             # API + SSE client
         └── components/
-            ├── ClinicPanel.jsx        # Levi panel: nalaz + račun
-            ├── ClearinghousePanel.jsx # Sredina: 3 agent kartice
-            ├── InsurancePanel.jsx     # Desni: prijem / odbijenica
-            ├── AgentCard.jsx          # Pojedinačni agent UI
-            ├── PipelineAnimation.jsx  # Tačkica koja putuje
-            ├── StatsDashboard.jsx     # 4 brojača na vrhu
-            ├── NarratorOverlay.jsx    # Loom-friendly natpisi
-            ├── AegisFixModal.jsx      # 1-Click Auto-Dopuna popup
-            └── ScenarioSelector.jsx   # Top bar tab-ovi + RUN dugme
+            ├── ClinicPanel.jsx        # Left panel: note + bill
+            ├── ClearinghousePanel.jsx # Middle: 3 agent cards
+            ├── InsurancePanel.jsx     # Right: receipt / denial
+            ├── AgentCard.jsx          # Individual agent UI
+            ├── PipelineAnimation.jsx  # Traveling packet dot
+            ├── StatsDashboard.jsx     # 4 counters at the top
+            ├── NarratorOverlay.jsx    # Loom-friendly captions
+            ├── AegisFixModal.jsx      # 1-Click Auto-Fill popup
+            └── ScenarioSelector.jsx   # Top bar tabs + Run button
 ```
 
-### Tok jednog scenarija
+### Scenario Flow
 
-1. Korisnik bira scenario → frontend zove `GET /api/scenarios/{id}` → klinika panel
-   prikazuje lekarski nalaz i račun.
-2. Klik **POKRENI DEMO** → otvara se SSE konekcija
+1. User selects a scenario -> frontend calls `GET /api/scenarios/{id}` -> the
+   clinic panel displays the physician note and bill.
+2. Click **Run demo** -> an SSE connection opens:
    `GET /api/clearinghouse/intercept-stream/{id}`.
-3. Backend serijski poziva Agent 1 (Gemini) → emit `agent_result` → frontend prikazuje
-   findings; isto za Agent 2 i Agent 3.
-4. Backend emit `decision` → frontend prikazuje konačan ishod (approved / rejected) u
-   `InsurancePanel`.
-5. Ako rejected → otvara se `AegisFixModal` sa **1-Click Auto-Dopunom**.
-6. Klik na auto-dopunu → `POST /api/clinic/apply-fix` → primenjuje ICD-10 šifre →
-   ponovno pokreće sva 3 agenta → ovaj put approved.
+3. Backend calls Agent 1 (Gemini) -> emits `agent_result` -> frontend displays
+   findings; the same happens for Agent 2 and Agent 3.
+4. Backend emits `decision` -> frontend displays the final outcome
+   (`approved` / `rejected`) in `InsurancePanel`.
+5. If rejected -> `AegisFixModal` opens with **1-Click Auto-Fill**.
+6. Click auto-fill -> `POST /api/clinic/apply-fix` -> applies ICD-10 codes ->
+   reruns all 3 agents -> this time the claim is approved.
 
 ---
 
-## Tri scenarija (za pitch snimak)
+## Four Scenarios (for pitch recording)
 
-### Scenario A: "Greška — nedostaje ICD-10" *(hero scenario)*
+### Scenario A: "Error: missing ICD-10 code" *(hero scenario)*
 
-- **Pacijent**: Marko Petrović, bol u stomaku.
-- **Lekarski nalaz**: opisuje "oštar probadajući bol ispod levog rebranog luka".
-- **Račun**: ultrazvuk abdomena (CPT 76700), ali sestra je **zaboravila** da poveže
-  ICD-10 šifru za bol.
-- **Ishod**: Agent 1 izvuče R10.9 (abdominalni bol) iz teksta, Agent 3 hvata da na
-  računu nedostaje ICD-10. Aegis modal nudi 1-click ispravku.
+- **Patient**: Marko Petrovic, abdominal pain.
+- **Physician note**: describes "sharp stabbing pain below the left costal arch".
+- **Bill**: abdominal ultrasound (CPT 76700), but the nurse **forgot** to link
+  the ICD-10 code for pain.
+- **Outcome**: Agent 1 extracts R10.9 (abdominal pain) from the text, Agent 3
+  catches that the bill is missing ICD-10. The Aegis modal offers a 1-click fix.
 
-### Scenario B: "Čist račun"
+### Scenario B: "Clean bill"
 
-- Rutinski sistematski pregled, sve šifre na mestu.
-- **Ishod**: prolazi kroz pipeline za par sekundi — `approved`. Pokazuje da AI ne
-  blokira nepotrebno.
+- Routine annual physical examination, all codes in place.
+- **Outcome**: passes through the pipeline in a few seconds as `approved`.
+  Shows that the AI does not block unnecessarily.
 
-### Scenario C: "Kršenje ugovora" *(Graph RAG hero)*
+### Scenario C: "Contract violation" *(Graph RAG hero)*
 
-- Pacijent imao MRI mozga pre 2 meseca; ugovor ograničava MRI na 1× / 6 meseci.
-- **Ishod**: Agent 2 (Contract Lawyer) hvata kršenje pravila iz ugovora, Agent 3
-  blokira račun. Pokazuje moć Graph RAG-a.
+- Patient had a brain MRI 2 months ago; the contract limits MRI to 1x / 6 months.
+- **Outcome**: Agent 2 (Contract Lawyer) catches the contract rule violation,
+  Agent 3 blocks the request. Demonstrates the power of Graph RAG.
 
----
+### Scenario D: "Missing documents"
 
-## Skripta za Loom snimak (preporučeno trajanje: 2-3 minuta)
-
-1. **(0:00)** Otvoriti demo na `localhost:5173`. Reci:
-   *"Pred vama je AegisBilling.ai — AI sloj koji sedi unutar klirinške kuće. Levo
-   imamo kliniku, u sredini naš filter sa tri agenta, desno osiguranje."*
-
-2. **(0:20)** Klik **"Greška: nedostaje ICD-10 šifra"** → pokaži tekst lekara i
-   račun. *"Pacijent ima bol u stomaku — lekar je to napisao. Ali sestra na šalteru
-   je zaboravila da prebaci tu dijagnozu u ICD-10 polje na računu."*
-
-3. **(0:40)** Klik **POKRENI DEMO**. Komentariši dok Gemini agenti rade. Loom
-   narrator natpisi pri vrhu automatski prate korake.
-
-4. **(1:10)** Kada iskoči crveni Aegis modal, pauziraj. *"Ovo je hero
-   funkcionalnost — jedan klik. Sestra ne mora ništa ručno da kuca."*
-
-5. **(1:25)** Klik **1-Click Auto-Dopuna**. Pokaži kako se ICD-10 šifra pojavljuje
-   na računu i kako paket sada prolazi do osiguranja.
-
-6. **(1:50)** Pređi na **Scenario B** (čist račun) → pokaži da AI ne blokira sve.
-
-7. **(2:10)** Pređi na **Scenario C** (kršenje ugovora) → pokaži kako Agent 2 hvata
-   pravilo iz ugovora koje je nemoguće ručno isprogramirati.
-
-8. **(2:45)** Završi pokazujući stats dashboard. *"Pogledajte: presretnuto X
-   računa, sačuvano Y EUR za klinike. Svaki taj račun je 0.05€ direktan prihod u
-   našem džepu."*
+- Physical therapy bill has matching CPT and ICD-10 codes.
+- The policy requires a physician referral, initial PT evaluation with treatment
+  plan, and a progress report when billing more than 4 sessions.
+- The clinic attached only a follow-up note and invoice lines.
+- **Outcome**: Aegis predicts the insurer would deny the package as incomplete
+  and tells the clinic exactly which documents to attach before submission.
 
 ---
 
-## Šta menjati kad pređete na produkciju
+## Loom Recording Script (recommended length: 2-3 minutes)
 
-| Komponenta | Sada (demo) | Produkcija |
+1. **(0:00)** Open the demo at `localhost:5173`. Say:
+   *"This is AegisBilling.ai, an AI layer sitting inside the clearinghouse. On
+   the left we have the clinic, in the middle our three-agent filter, and on the
+   right the insurer."*
+
+2. **(0:20)** Click **"Error: missing ICD-10 code"** -> show the physician text
+   and bill. *"The patient has abdominal pain; the doctor wrote that down. But
+   the front desk forgot to copy that diagnosis into the ICD-10 field on the bill."*
+
+3. **(0:40)** Click **Run demo**. Comment while the Gemini agents work. Loom
+   narrator captions at the top automatically follow the steps.
+
+4. **(1:10)** When the red Aegis modal appears, pause. *"This is the hero
+   functionality: one click. Front-desk staff do not have to type anything manually."*
+
+5. **(1:25)** Click **1-Click Auto-Fill**. Show how the ICD-10 code appears on
+   the bill and how the packet now passes to insurance.
+
+6. **(1:50)** Switch to **Scenario B** (clean bill) -> show that AI does not
+   block everything.
+
+7. **(2:10)** Switch to **Scenario C** (contract violation) -> show how Agent 2
+   catches a contract rule that would be impossible to hard-code manually.
+
+8. **(2:35)** Switch to **Scenario D** (missing documents) -> show that the bill
+   is medically valid, but the policy requires extra attachments before it can
+   pass insurance.
+
+9. **(2:55)** Finish by showing the stats dashboard. *"Look: X bills intercepted,
+   Y EUR saved for clinics. Every bill is 0.05 EUR of direct revenue for us."*
+
+---
+
+## What To Change For Production
+
+| Component | Now (demo) | Production |
 | --- | --- | --- |
-| Ulazni podaci | `mock_data/scenarios.py` | Pravi EDI 837 webhook iz clearinghouse-a |
-| Ugovori osiguranja | `insurance_contracts.py` (text) | PDF-ovi u Vertex AI Search graf bazu |
-| LLM provider | AI Studio (free tier) | Vertex AI na GCP-u (Gemini Pro/Flash) |
-| Agent orchestration | Serijski u FastAPI | Cloud Run + Vertex AI Agents / ADK |
+| Input data | `mock_data/scenarios.py` | Real EDI 837 webhook from the clearinghouse |
+| Insurance contracts | `insurance_contracts.py` (text) | PDFs in Vertex AI Search graph database |
+| LLM provider | AI Studio (free tier) | Vertex AI on GCP (Gemini Pro/Flash) |
+| Agent orchestration | Sequential in FastAPI | Cloud Run + Vertex AI Agents / ADK |
 | Stats | In-memory dict | PostgreSQL + Redis |
-| Auth | Nema | OAuth2 + IAM između clearinghouse i nas |
-| Anonimizacija | Nema | PII redaktor pre slanja u LLM |
+| Auth | None | OAuth2 + IAM between the clearinghouse and us |
+| Anonymization | None | PII redactor before sending to LLM |
 
 ---
 
-## API endpointi (za testiranje van UI-ja)
+## API Endpoints (for testing outside the UI)
 
 ```bash
-# Lista scenarija
+# Scenario list
 curl http://localhost:8000/api/scenarios
 
-# Vrati podatke o scenarijju (klinika)
+# Return scenario data (clinic)
 curl http://localhost:8000/api/scenarios/scenario_a
 
-# Sinhrono presretanje (čekaš dok svi agenti završe)
+# Synchronous interception (waits until all agents finish)
 curl -X POST http://localhost:8000/api/clearinghouse/intercept \
   -H "Content-Type: application/json" \
   -d @scenario_a_packet.json
@@ -205,7 +219,7 @@ curl -X POST http://localhost:8000/api/clearinghouse/intercept \
 # SSE stream (real-time progress)
 curl -N http://localhost:8000/api/clearinghouse/intercept-stream/scenario_a
 
-# Primena fix-a
+# Apply fix
 curl -X POST http://localhost:8000/api/clinic/apply-fix \
   -H "Content-Type: application/json" \
   -d '{"scenario_id":"scenario_a","fixes":[{"action":"add_icd10","codes":["R10.9"],"to_cpt":"76700"}]}'
@@ -218,31 +232,32 @@ curl http://localhost:8000/api/stats
 
 ## Troubleshooting
 
-**"GEMINI_API_KEY nije postavljen"**
-Kreirajte `backend/.env` iz `backend/.env.example` i upišite ključ. Ključ dobijate
-besplatno na https://aistudio.google.com/apikey
+**"GEMINI_API_KEY is not set"**
+Create `backend/.env` from `backend/.env.example` and add the key. You can get
+the key for free at https://aistudio.google.com/apikey
 
-**Frontend ne vidi backend (CORS / Network error)**
-Backend mora biti na `http://localhost:8000` i frontend na `http://localhost:5173`.
-Vite proxy je već konfigurisan.
+**Frontend cannot see backend (CORS / Network error)**
+Backend must run at `http://localhost:8000` and frontend at
+`http://localhost:5173`. The Vite proxy is already configured.
 
-**Demo bez interneta / API ključa**
-Postavite `MOCK_MODE=true` u `.env` — agenti će koristiti pripremljene odgovore iz
-`mock_responses.py`. Vizuelno demo izgleda identično, samo bez LLM poziva.
+**Demo without internet / API key**
+Set `MOCK_MODE=true` in `.env`; agents will use prepared responses from
+`mock_responses.py`. Visually, the demo looks identical, just without LLM calls.
 
-**Agent vraća čudne / nekompletne odgovore**
-Gemini 2.0 Flash je brz ali ponekad varira. Možete probati `gemini-1.5-pro` u
-`.env`:
-```
+**Agent returns odd / incomplete responses**
+Gemini 2.0 Flash is fast but can vary. You can try `gemini-1.5-pro` in `.env`:
+
+```env
 AEGIS_MODEL=gemini-1.5-pro
 ```
-za stabilnije odgovore (ali sporije).
+
+for more stable responses (but slower).
 
 **Rate limit error (429)**
-Free tier ima 15 zahteva/min. Sačekajte par sekundi i pokušajte ponovo.
+The free tier has 15 requests/min. Wait a few seconds and try again.
 
 ---
 
 ## License
 
-Demo verzija za pitch potrebe. © 2026 AegisBilling.ai
+Demo version for pitch purposes. (c) 2026 AegisBilling.ai

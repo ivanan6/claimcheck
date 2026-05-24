@@ -1,23 +1,19 @@
-import { Building2, CheckCircle2, XCircle, Clock } from 'lucide-react'
+import { Landmark, CheckCircle2, XCircle, Clock } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import PanelShell from './PanelShell'
+import { Card } from '@/components/ui/card'
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 
 export default function InsurancePanel({ packet, decision }) {
   const status = !decision ? 'waiting' : decision.status
 
   return (
-    <div className="h-full flex flex-col bg-aegis-panel/80 backdrop-blur-sm rounded-2xl border border-aegis-border p-5 overflow-hidden">
-      <div className="flex items-center gap-3 mb-4 pb-3 border-b border-aegis-border">
-        <div className="w-10 h-10 rounded-lg bg-aegis-success/10 flex items-center justify-center text-aegis-success">
-          <Building2 size={20} />
-        </div>
-        <div>
-          <h2 className="font-bold text-lg leading-tight">Osiguravajuca kuca</h2>
-          <p className="text-xs text-aegis-muted">
-            {packet?.insurance_company || 'Global Health Insurance'}
-          </p>
-        </div>
-      </div>
-
+    <PanelShell
+      stepLabel="03"
+      icon={Landmark}
+      title="Insurance"
+      subtitle={packet?.insurance_company || 'Global Health Insurance'}
+    >
       <div className="flex-1 flex flex-col">
         <AnimatePresence mode="wait">
           {status === 'waiting' && <WaitingState key="waiting" />}
@@ -25,21 +21,25 @@ export default function InsurancePanel({ packet, decision }) {
           {status === 'rejected' && <RejectedState key="rejected" packet={packet} decision={decision} />}
         </AnimatePresence>
       </div>
-    </div>
+    </PanelShell>
   )
 }
 
 function WaitingState() {
   return (
     <motion.div
-      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="flex flex-col items-center justify-center h-full text-center"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="flex-1 flex flex-col items-center justify-center text-center py-12"
     >
-      <div className="w-16 h-16 rounded-full bg-aegis-panel2 border border-aegis-border flex items-center justify-center text-aegis-muted mb-4">
-        <Clock size={28} />
+      <div className="w-14 h-14 rounded-2xl bg-secondary border border-border flex items-center justify-center text-muted-foreground mb-4">
+        <Clock size={24} />
       </div>
-      <div className="text-aegis-muted">Inbox osiguranja</div>
-      <div className="text-xs text-aegis-muted/60 mt-1">Cekam novi zahtev od clearinghouse-a...</div>
+      <div className="text-sm text-foreground font-semibold">Insurance inbox</div>
+      <div className="text-[11px] text-muted-foreground mt-1">
+        Waiting for a new request from the clearinghouse...
+      </div>
     </motion.div>
   )
 }
@@ -47,93 +47,182 @@ function WaitingState() {
 function ApprovedState({ packet, decision }) {
   const total = packet.bill_items.reduce((s, i) => s + i.unit_price_eur * i.quantity, 0)
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col">
-      <div className="bg-aegis-success/10 border border-aegis-success/30 rounded-xl p-4 mb-4">
-        <div className="flex items-center gap-3">
-          <CheckCircle2 size={28} className="text-aegis-success" />
-          <div>
-            <div className="font-bold text-aegis-success">RACUN PRIMLJEN</div>
-            <div className="text-xs text-aegis-success/80">Validacija prosla, isplata pokrenuta</div>
-          </div>
-        </div>
-      </div>
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0 }}
+      className="flex-1 flex flex-col"
+    >
+      <Alert variant="success" className="mb-4">
+        <CheckCircle2 className="h-5 w-5" />
+        <AlertTitle>BILL RECEIVED</AlertTitle>
+        <AlertDescription>Validation passed, payout started</AlertDescription>
+      </Alert>
 
-      <div className="bg-aegis-panel2 rounded-lg border border-aegis-border p-4 space-y-3">
+      <Card className="p-4 space-y-3 bg-secondary/40">
         <Row label="Packet ID" value={packet.packet_id} mono />
-        <Row label="Klinika" value={packet.clinic_name} />
-        <Row label="Pacijent" value={packet.patient.full_name} />
+        <Row label="Clinic" value={packet.clinic_name} />
+        <Row label="Patient" value={packet.patient.full_name} />
         <Row label="Procedure" value={packet.bill_items.map((i) => i.cpt_code).join(', ')} mono />
-        <div className="pt-3 border-t border-aegis-border">
-          <Row label="Iznos za isplatu" value={`${total.toFixed(2)} €`} highlight />
-          <Row label="Predvidjena isplata" value="za 7-14 dana" />
+        <div className="pt-3 border-t border-border">
+          <Row label="Payout amount" value={`${total.toFixed(2)} €`} highlight />
+          <Row label="Expected payout" value="in 7-14 days" />
         </div>
-      </div>
+      </Card>
 
-      <div className="mt-auto pt-4 text-center">
-        <div className="text-xs text-aegis-muted">
-          Obradeno u {(decision.processing_time_ms / 1000).toFixed(1)}s ·
-          AI validacija: <span className="text-aegis-success">PROSAO</span>
-        </div>
+      <div className="mt-auto pt-4 text-center text-[11px] text-muted-foreground">
+        Processed in {(decision.processing_time_ms / 1000).toFixed(1)}s ·
+        AI validation: <span className="text-aegis-success font-bold">PASSED</span>
       </div>
     </motion.div>
   )
 }
 
 function RejectedState({ packet, decision }) {
-  return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col">
-      <div className="bg-aegis-warning/10 border border-aegis-warning/30 rounded-xl p-4 mb-4">
-        <div className="flex items-center gap-3">
-          <XCircle size={28} className="text-aegis-warning" />
-          <div>
-            <div className="font-bold text-aegis-warning">RACUN NIJE STIGAO</div>
-            <div className="text-xs text-aegis-warning/80">Zaustavljen u clearinghouse-u pre slanja</div>
-          </div>
-        </div>
-      </div>
+  const isPreAuth = (decision.agent3_issues || []).some(
+    (i) => i.issue_type === 'contract_limit_violation'
+  )
+  const isMissingDocs = (decision.agent3_issues || []).some(
+    (i) => i.issue_type === 'missing_required_documentation'
+  )
 
-      <div className="bg-aegis-panel2 rounded-lg border border-aegis-border p-4">
-        <div className="text-xs uppercase tracking-wider text-aegis-muted mb-2">
-          Kontrast: bez AegisBilling.ai...
-        </div>
-        <div className="space-y-2 text-sm">
-          <div className="flex gap-2 items-start">
-            <span className="text-aegis-danger">✕</span>
-            <span className="text-aegis-text/80">Lose pripremljen racun bi stigao do nas</span>
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0 }}
+      className="flex-1 flex flex-col"
+    >
+      <Alert variant="warning" className="mb-4">
+        <XCircle className="h-5 w-5" />
+        <AlertTitle>
+          {isPreAuth
+            ? 'REQUEST STOPPED BEFORE PROCEDURE'
+            : isMissingDocs
+              ? 'PACKAGE INCOMPLETE'
+              : 'BILL DID NOT ARRIVE'}
+        </AlertTitle>
+        <AlertDescription>
+          {isPreAuth
+            ? 'Aegis intercepted pre-authorization, procedure was not performed'
+            : isMissingDocs
+              ? 'Aegis predicted missing attachments before insurer denial'
+              : 'Stopped in the clearinghouse before sending'}
+        </AlertDescription>
+      </Alert>
+
+      {isPreAuth ? (
+        <Card className="p-4 bg-secondary/40">
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-3">
+            What Aegis saved
           </div>
-          <div className="flex gap-2 items-start">
-            <span className="text-aegis-danger">✕</span>
-            <span className="text-aegis-text/80">Automatska odbijenica generisana za 30 dana</span>
-          </div>
-          <div className="flex gap-2 items-start">
-            <span className="text-aegis-danger">✕</span>
-            <span className="text-aegis-text/80">
-              Klinika gubi <span className="font-semibold text-aegis-text">
-                {decision.estimated_saved_eur.toFixed(2)} €
-              </span> i pise zalbu nedelju dana
-            </span>
-          </div>
-        </div>
-        <div className="mt-3 pt-3 border-t border-aegis-border">
-          <div className="text-xs text-aegis-success flex items-start gap-2">
-            <CheckCircle2 size={14} className="mt-0.5 shrink-0" />
+          <ul className="space-y-2.5 text-sm">
+            <ImpactItem tone="success">
+              Procedure has NOT been performed yet - MRI appointment was not scheduled
+            </ImpactItem>
+            <ImpactItem tone="success">
+              Clinic actually saves{' '}
+              <span className="font-bold text-aegis-success font-mono">
+                {decision.estimated_saved_eur.toFixed(0)} €
+              </span>{' '}
+              (machine + radiologist + time)
+            </ImpactItem>
+            <ImpactItem tone="success">
+              Patient notified in advance - can choose to self-pay or cancel
+            </ImpactItem>
+          </ul>
+          <div className="mt-4 pt-3 border-t border-border text-[11px] text-foreground/80 flex items-start gap-2">
+            <span className="text-accent font-bold">→</span>
             <span>
-              Aegis je zaustavio racun za <span className="font-mono">
-                {(decision.processing_time_ms / 1000).toFixed(1)}s
-              </span>. Sestra dobija auto-fix predlog na ekranu.
+              Without Aegis: MRI is performed, the bill is sent, denial arrives
+              30-60 days later, and the clinic writes off the loss.
             </span>
           </div>
-        </div>
-      </div>
+        </Card>
+      ) : isMissingDocs ? (
+        <Card className="p-4 bg-secondary/40">
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-3">
+            What Aegis prevented
+          </div>
+          <ul className="space-y-2.5 text-sm">
+            <ImpactItem tone="success">
+              Claim was not sent with an incomplete document package
+            </ImpactItem>
+            <ImpactItem tone="success">
+              Clinic can attach the missing reports before submission
+            </ImpactItem>
+            <ImpactItem tone="success">
+              Avoids a predictable insurer denial and rework cycle
+            </ImpactItem>
+          </ul>
+          <div className="mt-4 pt-3 border-t border-border text-[11px] flex items-start gap-2 text-aegis-success">
+            <CheckCircle2 size={14} className="shrink-0 mt-0.5" />
+            <span>
+              Aegis turned the policy rule into a submission checklist in{' '}
+              <span className="font-mono font-bold">
+                {(decision.processing_time_ms / 1000).toFixed(1)}s
+              </span>
+              .
+            </span>
+          </div>
+        </Card>
+      ) : (
+        <Card className="p-4 bg-secondary/40">
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-3">
+            Contrast: without AegisBilling.ai
+          </div>
+          <ul className="space-y-2.5 text-sm">
+            <ImpactItem tone="danger">Poorly prepared bill would reach us</ImpactItem>
+            <ImpactItem tone="danger">Automatic denial generated in 30 days</ImpactItem>
+            <ImpactItem tone="danger">
+              Clinic loses{' '}
+              <span className="font-bold text-foreground font-mono">
+                {decision.estimated_saved_eur.toFixed(2)} €
+              </span>{' '}
+              and spends a week writing an appeal
+            </ImpactItem>
+          </ul>
+          <div className="mt-4 pt-3 border-t border-border text-[11px] flex items-start gap-2 text-aegis-success">
+            <CheckCircle2 size={14} className="shrink-0 mt-0.5" />
+            <span>
+              Aegis stopped the bill in{' '}
+              <span className="font-mono font-bold">
+                {(decision.processing_time_ms / 1000).toFixed(1)}s
+              </span>
+              . Front-desk staff get an auto-fix suggestion on screen.
+            </span>
+          </div>
+        </Card>
+      )}
     </motion.div>
+  )
+}
+
+function ImpactItem({ tone, children }) {
+  const bullet = tone === 'danger' ? (
+    <span className="text-aegis-danger mt-0.5">●</span>
+  ) : (
+    <CheckCircle2 size={14} className="text-aegis-success mt-0.5 shrink-0" />
+  )
+  return (
+    <li className="flex gap-2 items-start text-foreground/80 text-[13px] leading-snug">
+      {bullet}
+      <span>{children}</span>
+    </li>
   )
 }
 
 function Row({ label, value, mono, highlight }) {
   return (
     <div className="flex justify-between items-center gap-3 text-sm">
-      <span className="text-aegis-muted text-xs">{label}</span>
-      <span className={`${mono ? 'font-mono text-xs' : ''} ${highlight ? 'font-bold text-aegis-success' : 'text-aegis-text'}`}>
+      <span className="text-muted-foreground text-[11px] uppercase tracking-wider font-semibold">
+        {label}
+      </span>
+      <span
+        className={`${mono ? 'font-mono text-xs' : ''} ${
+          highlight ? 'font-bold text-aegis-success text-base' : 'text-foreground'
+        }`}
+      >
         {value}
       </span>
     </div>

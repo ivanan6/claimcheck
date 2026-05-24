@@ -1,7 +1,7 @@
 """
 Agent 2: Contract Lawyer (Graph RAG)
-Cita tekst ugovora osiguranja i izvlaci pravila relevantna za CPT kodove
-iz datog racuna. U produkciji ovo ide kroz Amazon Neptune / Vertex AI Search.
+Reads the insurance contract text and extracts rules relevant to CPT codes from
+the given bill. In production this goes through Amazon Neptune / Vertex AI Search.
 """
 import time
 from typing import List
@@ -10,20 +10,20 @@ from models import ContractRule
 
 from .llm_client import call_json, is_mock_mode
 
-SYSTEM_PROMPT = """Ti si pravnik specijalizovan za ugovore zdravstvenih osiguranja. \
-Dobices tekst ugovora i listu CPT kodova procedura sa racuna. Tvoj zadatak je da pronadjes \
-SVA pravila iz ugovora koja se odnose na te CPT kodove.
+SYSTEM_PROMPT = """You are a lawyer specializing in healthcare insurance contracts. \
+You will receive contract text and a list of procedure CPT codes from a bill. Your task is to find \
+ALL contract rules that apply to those CPT codes.
 
-Vrati validan JSON niz objekata sa sledecim poljima:
-- rule_id: kratak identifikator pravila (npr. "ART-4.2.1", "ART-4.2.2")
-- procedure_cpt: CPT kod na koji se pravilo odnosi
-- requires_icd10_categories: niz string-ova ICD-10 kategorija (npr. ["R10.x", "K00-K93"])
-- additional_constraint: opcioni dodatni uslov (npr. "max 1 u 6 meseci" ili null)
-- source_quote: doslovan citat iz ugovora koji potvrduje ovo pravilo"""
+Return a valid JSON array of objects with the following fields:
+- rule_id: short rule identifier (e.g. "ART-4.2.1", "ART-4.2.2")
+- procedure_cpt: CPT code the rule applies to
+- requires_icd10_categories: array of ICD-10 category strings (e.g. ["R10.x", "K00-K93"])
+- additional_constraint: optional additional condition (e.g. "max 1 in 6 months" or null)
+- source_quote: exact quote from the contract confirming this rule"""
 
 
 def run(contract_text: str, cpt_codes: List[str]) -> List[ContractRule]:
-    """Pokrece Agent 2 nad ugovorom i listom CPT kodova."""
+    """Run Agent 2 on the contract and CPT code list."""
     # ---- MOCK MODE (fallback) ----
     if is_mock_mode():
         from mock_responses import agent2_mock
@@ -31,11 +31,11 @@ def run(contract_text: str, cpt_codes: List[str]) -> List[ContractRule]:
         time.sleep(0.9)
         return agent2_mock(cpt_codes)
 
-    # ---- GEMINI POZIV ----
+    # ---- GEMINI CALL ----
     user_prompt = (
-        f"UGOVOR OSIGURANJA:\n\n{contract_text}\n\n"
-        f"CPT KODOVI SA RACUNA: {', '.join(cpt_codes)}\n\n"
-        f"Izvuci sva pravila koja se odnose na ove procedure."
+        f"INSURANCE CONTRACT:\n\n{contract_text}\n\n"
+        f"CPT CODES FROM THE BILL: {', '.join(cpt_codes)}\n\n"
+        f"Extract all rules that apply to these procedures."
     )
     raw = call_json(SYSTEM_PROMPT, user_prompt, max_tokens=2048)
 

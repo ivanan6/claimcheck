@@ -1,15 +1,15 @@
 """
 AegisBilling.ai - FastAPI backend
 ==================================
-Pokrece se:  uvicorn main:app --reload --port 8000
+Run with:  uvicorn main:app --reload --port 8000
 
-Endpointi:
-  GET  /api/scenarios                            - lista pripremljenih scenarija
-  GET  /api/scenarios/{scenario_id}              - vraca EDI 837 paket za scenario
-  POST /api/clearinghouse/intercept              - sinhrono presretanje (sva 3 agenta)
-  GET  /api/clearinghouse/intercept-stream/{id}  - SSE stream, salje korak po korak
-  POST /api/clinic/apply-fix                     - primenjuje predlozeni fix i re-submituje
-  GET  /api/stats                                - dashboard brojaci
+Endpoints:
+  GET  /api/scenarios                            - list prepared scenarios
+  GET  /api/scenarios/{scenario_id}              - return EDI 837 packet for a scenario
+  POST /api/clearinghouse/intercept              - synchronous interception (all 3 agents)
+  GET  /api/clearinghouse/intercept-stream/{id}  - SSE stream, sends progress step by step
+  POST /api/clinic/apply-fix                     - apply suggested fix and resubmit
+  GET  /api/stats                                - dashboard counters
 """
 import asyncio
 import json
@@ -33,9 +33,14 @@ load_dotenv()
 
 app = FastAPI(
     title="AegisBilling.ai",
-    description="AI filter za zdravstvene racune unutar clearinghouse-a (Gemini powered)",
+    description="AI filter for healthcare claims inside a clearinghouse (Gemini powered)",
     version="0.1.0",
 )
+
+# In-memory override: when front-desk staff apply a fix in the Clinic panel, the
+# corrected packet is stored here so the next Run uses it instead of resetting
+# the scenario. It is cleared when the user selects the scenario again.
+_FIXED_PACKETS: dict[str, EDI837Packet] = {}
 
 app.add_middleware(
     CORSMiddleware,
@@ -68,7 +73,7 @@ def root():
 
 
 # ============================================================================
-# SCENARIJI (mockovani ulazni podaci)
+# SCENARIOS (mock input data)
 # ============================================================================
 
 @app.get("/api/scenarios")
@@ -87,46 +92,63 @@ def list_scenarios():
 @app.get("/api/scenarios/{scenario_id}")
 def get_scenario(scenario_id: str) -> EDI837Packet:
     if scenario_id not in SCENARIOS:
-        raise HTTPException(status_code=404, detail=f"Scenario {scenario_id} ne postoji")
+        raise HTTPException(status_code=404, detail=f"Scenario {scenario_id} does not exist")
+    if scenario_id in _FIXED_PACKETS:
+        return _FIXED_PACKETS[scenario_id]
     return SCENARIOS[scenario_id]["loader"]()
 
 
+@app.post("/api/scenarios/{scenario_id}/reset")
+def reset_scenario(scenario_id: str):
+    """Clear the previously applied fix and restore the scenario to its initial state."""
+    if scenario_id not in SCENARIOS:
+        raise HTTPException(status_code=404, detail=f"Scenario {scenario_id} does not exist")
+    _FIXED_PACKETS.pop(scenario_id, None)
+    return {"ok": True, "scenario_id": scenario_id}
+
+
 # ============================================================================
-# CORE: presretanje (sinhrono - sva 3 agenta, vrati konacnu odluku)
+# CORE: interception (synchronous - all 3 agents, returns final decision)
 # ============================================================================
 
 def _run_full_audit(packet: EDI837Packet) -> AegisDecision:
-    """Pokrece sva 3 agenta serijski i sklapa konacnu odluku."""
+    """Run all 3 agents sequentially and assemble the final decision."""
     t0 = time.time()
     narrator_steps: list[str] = []
 
-    narrator_steps.append("Agent 1 (Medical Coder) cita lekarski nalaz...")
+    narrator_steps.append("Agent 1 (Medical Coder) reads the physician note...")
     findings = medical_coder.run(packet.doctor_note)
     narrator_steps.append(
-        f"Agent 1 nasao {len(findings)} klinickih nalaza iz teksta lekara."
+        f"Agent 1 found {len(findings)} clinical findings in the physician note."
     )
 
     contract_text = get_contract(packet.insurance_company)
     cpt_codes = [item.cpt_code for item in packet.bill_items]
-    narrator_steps.append("Agent 2 (Contract Lawyer) pretrazuje ugovor osiguranja...")
+    narrator_steps.append("Agent 2 (Contract Lawyer) searches the insurance contract...")
     rules = contract_lawyer.run(contract_text, cpt_codes)
     narrator_steps.append(
-        f"Agent 2 izvukao {len(rules)} relevantnih pravila iz ugovora."
+        f"Agent 2 extracted {len(rules)} relevant rules from the contract."
     )
 
     history = get_patient_history(packet.patient.patient_id)
-    narrator_steps.append("Agent 3 (Auditor) unakrsno proverava racun...")
-    issues = auditor.run(findings, rules, packet.bill_items, history)
+    narrator_steps.append("Agent 3 (Auditor) cross-checks the bill...")
+    issues = auditor.run(
+        findings,
+        rules,
+        packet.bill_items,
+        history,
+        packet.supporting_documents,
+    )
 
     has_errors = any(i.severity == "error" for i in issues)
     status = "rejected" if has_errors else "approved"
 
     if has_errors:
         narrator_steps.append(
-            f"STOP! Aegis je presreo {len(issues)} gresaka pre slanja osiguranju."
+            f"STOP! Aegis intercepted {len(issues)} errors before sending to insurance."
         )
     else:
-        narrator_steps.append("OK - racun je cist, prosledjen osiguranju.")
+        narrator_steps.append("OK - the bill is clean and forwarded to insurance.")
 
     total_bill = sum(item.unit_price_eur * item.quantity for item in packet.bill_items)
     saved = total_bill if has_errors else 0.0
@@ -147,12 +169,12 @@ def _run_full_audit(packet: EDI837Packet) -> AegisDecision:
 
 @app.post("/api/clearinghouse/intercept", response_model=AegisDecision)
 def intercept(packet: EDI837Packet):
-    """Sinhroni endpoint: vraca konacnu odluku kad svi agenti zavrse."""
+    """Synchronous endpoint: returns the final decision after all agents finish."""
     return _run_full_audit(packet)
 
 
 # ============================================================================
-# STREAMING: Server-Sent Events za realtime pipeline animaciju
+# STREAMING: Server-Sent Events for the real-time pipeline animation
 # ============================================================================
 
 def _sse_pack(event: str, data: dict) -> str:
@@ -160,7 +182,7 @@ def _sse_pack(event: str, data: dict) -> str:
 
 
 async def _stream_audit(packet: EDI837Packet) -> AsyncIterator[str]:
-    """Salje SSE evente kako se agenti pokrecu."""
+    """Send SSE events as agents run."""
     t0 = time.time()
 
     yield _sse_pack("stage", {"stage": "clearinghouse_received", "packet_id": packet.packet_id})
@@ -197,7 +219,12 @@ async def _stream_audit(packet: EDI837Packet) -> AsyncIterator[str]:
     yield _sse_pack("stage", {"stage": "agent3_started", "agent": "auditor"})
     history = get_patient_history(packet.patient.patient_id)
     issues = await asyncio.to_thread(
-        auditor.run, findings, rules, packet.bill_items, history
+        auditor.run,
+        findings,
+        rules,
+        packet.bill_items,
+        history,
+        packet.supporting_documents,
     )
     yield _sse_pack(
         "agent_result",
@@ -235,10 +262,10 @@ async def _stream_audit(packet: EDI837Packet) -> AsyncIterator[str]:
 
 @app.get("/api/clearinghouse/intercept-stream/{scenario_id}")
 async def intercept_stream(scenario_id: str):
-    """SSE endpoint koji frontend pretplati za realtime animaciju pipeline-a."""
+    """SSE endpoint the frontend subscribes to for the real-time pipeline animation."""
     if scenario_id not in SCENARIOS:
-        raise HTTPException(status_code=404, detail=f"Scenario {scenario_id} ne postoji")
-    packet = SCENARIOS[scenario_id]["loader"]()
+        raise HTTPException(status_code=404, detail=f"Scenario {scenario_id} does not exist")
+    packet = _FIXED_PACKETS.get(scenario_id) or SCENARIOS[scenario_id]["loader"]()
     return StreamingResponse(
         _stream_audit(packet),
         media_type="text/event-stream",
@@ -247,7 +274,7 @@ async def intercept_stream(scenario_id: str):
 
 
 # ============================================================================
-# FIX: primena predlozenog auto-fix-a i re-submission
+# FIX: applying the suggested auto-fix and resubmission
 # ============================================================================
 
 class ApplyFixRequest(BaseModel):
@@ -255,13 +282,18 @@ class ApplyFixRequest(BaseModel):
     fixes: list[dict]
 
 
-@app.post("/api/clinic/apply-fix", response_model=AegisDecision)
+@app.post("/api/clinic/apply-fix", response_model=EDI837Packet)
 def apply_fix(req: ApplyFixRequest):
-    """Simulira 1-Click Auto-Dopuna sa sestrinog ekrana."""
+    """
+    Apply the fix in the clinic system (add ICD-10, remove line item, etc.) and
+    store the corrected packet in _FIXED_PACKETS. Returns the corrected packet
+    without rerunning the auditor. The next stream/intercept call will use the
+    corrected packet.
+    """
     if req.scenario_id not in SCENARIOS:
-        raise HTTPException(status_code=404, detail="Scenario ne postoji")
+        raise HTTPException(status_code=404, detail="Scenario does not exist")
 
-    packet = SCENARIOS[req.scenario_id]["loader"]()
+    packet = _FIXED_PACKETS.get(req.scenario_id) or SCENARIOS[req.scenario_id]["loader"]()
 
     for fix in req.fixes:
         action = fix.get("action")
@@ -276,8 +308,13 @@ def apply_fix(req: ApplyFixRequest):
         elif action == "remove_line":
             cpt = fix.get("cpt")
             packet.bill_items = [b for b in packet.bill_items if b.cpt_code != cpt]
+        elif action == "attach_documents":
+            for doc in fix.get("documents", []):
+                if doc not in packet.supporting_documents:
+                    packet.supporting_documents.append(doc)
 
-    return _run_full_audit(packet)
+    _FIXED_PACKETS[req.scenario_id] = packet
+    return packet
 
 
 # ============================================================================

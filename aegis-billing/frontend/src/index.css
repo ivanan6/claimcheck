@@ -2,81 +2,103 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  color-scheme: dark;
+@layer base {
+  :root {
+    /* shadcn theme variables — Aegis: navy primary + orange accent on near-white bg */
+    --background: 220 27% 98%;       /* #f7f8fb */
+    --foreground: 222 47% 11%;       /* #0f172a */
+
+    --card: 0 0% 100%;                /* white */
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 222 75% 17%;           /* #0b1f4d navy */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 23% 95%;         /* light slate */
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 220 23% 95%;
+    --muted-foreground: 215 16% 47%;  /* slate-500 */
+
+    --accent: 25 95% 53%;             /* #f97316 orange */
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 73% 50%;         /* #dc2626 */
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 218 24% 92%;            /* #e5e9f0 */
+    --input: 218 24% 92%;
+    --ring: 25 95% 53%;               /* orange ring for focus */
+
+    --radius: 0.75rem;
+  }
 }
 
-body {
-  margin: 0;
-  background: #0a0e1a;
-  color: #e5e7eb;
-  min-height: 100vh;
-  overflow-x: hidden;
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 }
 
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background:
-    radial-gradient(ellipse at top left, rgba(0, 212, 255, 0.08), transparent 50%),
-    radial-gradient(ellipse at bottom right, rgba(124, 58, 237, 0.08), transparent 50%);
-  pointer-events: none;
-  z-index: 0;
-}
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cdd5e0; border-radius: 6px; border: 2px solid #f7f8fb; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
-#root {
-  position: relative;
-  z-index: 1;
-  min-height: 100vh;
-}
-
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: #131826; }
-::-webkit-scrollbar-thumb { background: #252b3d; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #00d4ff; }
-
+/* Pipeline flow line */
 .pipeline-line {
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(0, 212, 255, 0.2) 20%,
-    rgba(0, 212, 255, 0.8) 50%,
-    rgba(0, 212, 255, 0.2) 80%,
+    rgba(11, 31, 77, 0.18) 20%,
+    rgba(249, 115, 22, 0.85) 50%,
+    rgba(11, 31, 77, 0.18) 80%,
     transparent 100%
   );
   background-size: 200% 100%;
 }
-
 .pipeline-line.active {
-  animation: flow 1.5s linear infinite;
+  animation: flow 1.6s linear infinite;
 }
-
 @keyframes flow {
   0% { background-position: 200% 0%; }
   100% { background-position: 0% 0%; }
 }
 
+/* Status rings replacing the old neon glow */
 .glow-cyan {
-  box-shadow: 0 0 30px rgba(0, 212, 255, 0.5), inset 0 0 20px rgba(0, 212, 255, 0.1);
-  border-color: rgba(0, 212, 255, 0.6) !important;
+  box-shadow: 0 0 0 3px rgba(11, 31, 77, 0.08), 0 4px 12px -2px rgba(11, 31, 77, 0.1);
+  border-color: rgba(11, 31, 77, 0.5) !important;
 }
-
 .glow-red {
-  box-shadow: 0 0 30px rgba(239, 68, 68, 0.5), inset 0 0 20px rgba(239, 68, 68, 0.1);
-  border-color: rgba(239, 68, 68, 0.6) !important;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1), 0 4px 12px -2px rgba(220, 38, 38, 0.14);
+  border-color: rgba(220, 38, 38, 0.55) !important;
 }
-
 .glow-green {
-  box-shadow: 0 0 30px rgba(16, 185, 129, 0.5), inset 0 0 20px rgba(16, 185, 129, 0.1);
-  border-color: rgba(16, 185, 129, 0.6) !important;
+  box-shadow: 0 0 0 3px rgba(11, 138, 74, 0.1), 0 4px 12px -2px rgba(11, 138, 74, 0.14);
+  border-color: rgba(11, 138, 74, 0.55) !important;
 }
 
 .packet-dot {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
-  background: #00d4ff;
-  box-shadow: 0 0 20px #00d4ff, 0 0 40px rgba(0, 212, 255, 0.5);
+  background: #f97316;
+}
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #f97316;
 }

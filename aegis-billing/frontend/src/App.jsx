@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { Shield, Zap } from 'lucide-react'
+import { ShieldCheck } from 'lucide-react'
 
 import ClinicPanel from './components/ClinicPanel'
 import ClearinghousePanel from './components/ClearinghousePanel'
@@ -7,23 +7,22 @@ import InsurancePanel from './components/InsurancePanel'
 import PipelineAnimation from './components/PipelineAnimation'
 import StatsDashboard from './components/StatsDashboard'
 import NarratorOverlay from './components/NarratorOverlay'
-import AegisFixModal from './components/AegisFixModal'
 import ScenarioSelector from './components/ScenarioSelector'
 
 import {
-  listScenarios, getScenario, streamIntercept, applyFix, recordStats, getStats,
+  listScenarios, getScenario, streamIntercept, applyFix, recordStats, getStats, resetScenario,
 } from './lib/api'
 
 const STAGE_NARRATIVE = {
-  clearinghouse_received: { text: 'EDI 837 paket usao u clearinghouse', stepNumber: 1, pipeline: 'to_clearinghouse' },
-  agent1_started: { text: 'Agent 1 cita slobodan tekst lekara (Gemini)...', stepNumber: 2, pipeline: 'in_clearinghouse' },
-  agent1_done: { text: 'Agent 1 izvukao klinicke nalaze i ICD-10 sifre', stepNumber: 2, pipeline: 'in_clearinghouse' },
-  agent2_started: { text: 'Agent 2 pretrazuje ugovor osiguranja (Graph RAG)', stepNumber: 3, pipeline: 'in_clearinghouse' },
-  agent2_done: { text: 'Agent 2 izvukao pravila iz ugovora', stepNumber: 3, pipeline: 'in_clearinghouse' },
-  agent3_started: { text: 'Agent 3 unakrsno proverava racun...', stepNumber: 4, pipeline: 'in_clearinghouse' },
-  agent3_done: { text: 'Agent 3 donosi odluku', stepNumber: 4, pipeline: 'in_clearinghouse' },
-  delivered_to_insurance: { text: 'Racun isporucen osiguranju', stepNumber: 5, pipeline: 'to_insurance' },
-  blocked_by_aegis: { text: 'STOP! Aegis je zaustavio lose pripremljen racun.', stepNumber: 5, pipeline: 'blocked' },
+  clearinghouse_received: { text: 'EDI 837 packet entered clearinghouse', stepNumber: 1, pipeline: 'to_clearinghouse' },
+  agent1_started: { text: 'Agent 1 reading the doctor\'s free text...', stepNumber: 2, pipeline: 'in_clearinghouse' },
+  agent1_done: { text: 'Agent 1 extracted clinical findings and ICD-10 codes', stepNumber: 2, pipeline: 'in_clearinghouse' },
+  agent2_started: { text: 'Agent 2 searching the insurance contract (Graph RAG)', stepNumber: 3, pipeline: 'in_clearinghouse' },
+  agent2_done: { text: 'Agent 2 extracted rules from the contract', stepNumber: 3, pipeline: 'in_clearinghouse' },
+  agent3_started: { text: 'Agent 3 cross-checking the bill...', stepNumber: 4, pipeline: 'in_clearinghouse' },
+  agent3_done: { text: 'Agent 3 making the decision', stepNumber: 4, pipeline: 'in_clearinghouse' },
+  delivered_to_insurance: { text: 'Bill delivered to insurance', stepNumber: 5, pipeline: 'to_insurance' },
+  blocked_by_aegis: { text: 'STOP! Aegis blocked a poorly prepared bill.', stepNumber: 5, pipeline: 'blocked' },
 }
 
 export default function App() {
@@ -39,7 +38,6 @@ export default function App() {
   const [narrator, setNarrator] = useState(null)
   const [pipelineStage, setPipelineStage] = useState('idle')
 
-  const [fixModalOpen, setFixModalOpen] = useState(false)
   const [fixBusy, setFixBusy] = useState(false)
 
   const [stats, setStats] = useState(null)
@@ -58,6 +56,8 @@ export default function App() {
     setPipelineStage('idle')
     setNarrator(null)
     try {
+      // Reset previous fixes so the scenario starts from its initial broken state.
+      await resetScenario(id).catch(() => {})
       const p = await getScenario(id)
       setPacket(p)
     } catch (e) { console.error(e) }
@@ -70,7 +70,7 @@ export default function App() {
     setAgentStates({ 1: 'idle', 2: 'idle', 3: 'idle' })
     setAgentResults({ 1: null, 2: null, 3: null })
     setPipelineStage('to_clearinghouse')
-    setNarrator({ text: 'Pokrecem demo...', stepNumber: 0 })
+    setNarrator({ text: 'Starting demo...', stepNumber: 0 })
 
     closeStreamRef.current = streamIntercept(selectedId, {
       onStage: (data) => {
@@ -98,19 +98,16 @@ export default function App() {
       onDecision: (data) => {
         setDecision(data)
         recordStats(data).then(setStats).catch(() => {})
-        if (data.status === 'rejected') {
-          setTimeout(() => setFixModalOpen(true), 1200)
-        }
       },
       onDone: () => {
         setRunning(false)
         closeStreamRef.current = null
       },
       onError: (e) => {
-        console.error('SSE greska', e)
+        console.error('SSE error', e)
         setRunning(false)
         setNarrator({
-          text: 'Greska pri komunikaciji sa backendom. Proveri GEMINI_API_KEY u .env.',
+          text: 'Backend communication error. Check that the server is running.',
           stepNumber: 0,
         })
       },
@@ -121,35 +118,20 @@ export default function App() {
     if (!selectedId) return
     setFixBusy(true)
     try {
-      const newDecision = await applyFix(selectedId, fixes)
-      setPacket((prev) => {
-        if (!prev) return prev
-        const updated = { ...prev, bill_items: prev.bill_items.map((b) => ({ ...b })) }
-        for (const f of fixes) {
-          if (f.action === 'add_icd10') {
-            const target = f.to_cpt || f.cpt
-            const it = updated.bill_items.find((b) => b.cpt_code === target)
-            if (it) for (const c of f.codes || []) if (!it.icd10_codes.includes(c)) it.icd10_codes.push(c)
-          }
-        }
-        return updated
-      })
+      // Backend applies fixes and returns the corrected packet. The audit does
+      // not run yet; the user clicks Run again to see the pipeline pass.
+      const fixedPacket = await applyFix(selectedId, fixes)
+      setPacket(fixedPacket)
 
-      setDecision(newDecision)
-      setAgentResults({
-        1: newDecision.agent1_findings,
-        2: newDecision.agent2_rules,
-        3: newDecision.agent3_issues,
+      // Reset agents and decision so the UI is ready for a new run.
+      setDecision(null)
+      setAgentStates({ 1: 'idle', 2: 'idle', 3: 'idle' })
+      setAgentResults({ 1: null, 2: null, 3: null })
+      setPipelineStage('idle')
+      setNarrator({
+        text: 'Fix applied to the bill. Click "Run" to resubmit.',
+        stepNumber: 0,
       })
-      const hasErrorsNow = newDecision.agent3_issues.some((i) => i.severity === 'error')
-      setAgentStates({ 1: 'done', 2: 'done', 3: hasErrorsNow ? 'flagged' : 'done' })
-
-      if (newDecision.status === 'approved') {
-        setPipelineStage('to_insurance')
-        setNarrator({ text: 'Posle 1-click fix-a: racun prosao!', stepNumber: 6 })
-      }
-      recordStats(newDecision).then(setStats).catch(() => {})
-      setFixModalOpen(false)
     } catch (e) {
       console.error(e)
     } finally {
@@ -158,57 +140,63 @@ export default function App() {
   }, [selectedId])
 
   return (
-    <div className="min-h-screen flex flex-col p-5 gap-4">
-      <header className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-aegis-accent to-aegis-accent2 flex items-center justify-center shadow-lg shadow-aegis-accent/20">
-            <Shield size={22} className="text-aegis-bg" />
+    <div className="min-h-screen flex flex-col">
+      {/* Compact top bar: logo + scenarios + Run */}
+      <header className="sticky top-0 z-30 bg-aegis-panel border-b border-aegis-border">
+        <div className="max-w-[1440px] mx-auto px-6 py-3 flex items-center gap-6 flex-wrap">
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="w-10 h-10 rounded-lg bg-aegis-primary flex items-center justify-center">
+              <ShieldCheck size={20} className="text-white" strokeWidth={2.2} />
+            </div>
+            <div>
+              <div className="font-bold text-base text-aegis-primary tracking-tight leading-none">
+                AegisBilling<span className="text-aegis-accent">.ai</span>
+              </div>
+              <div className="text-[10px] text-aegis-muted mt-0.5 leading-none uppercase tracking-wider font-semibold">
+                AI clearinghouse filter
+              </div>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight">
-              AegisBilling.<span className="text-aegis-accent">ai</span>
-            </h1>
-            <p className="text-xs text-aegis-muted -mt-0.5">
-              <Zap size={10} className="inline mr-1 -mt-0.5" />
-              AI filter izmedju klinike i osiguranja · Gemini powered
-            </p>
-          </div>
-        </div>
 
-        <ScenarioSelector
-          scenarios={scenarios}
-          selectedId={selectedId}
-          onSelect={handleSelect}
-          onRun={handleRun}
-          running={running}
-        />
+          <ScenarioSelector
+            scenarios={scenarios}
+            selectedId={selectedId}
+            onSelect={handleSelect}
+            onRun={handleRun}
+            running={running}
+          />
+        </div>
       </header>
 
-      <StatsDashboard stats={stats} />
-      <PipelineAnimation activeStage={pipelineStage} />
+      {/* Main demo area */}
+      <main className="max-w-[1440px] w-full mx-auto px-6 py-6 flex-1 flex flex-col gap-5">
+        <StatsDashboard stats={stats} />
+        <PipelineAnimation activeStage={pipelineStage} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 min-h-[600px]">
-        <ClinicPanel
-          packet={packet}
-          highlightMissingIcd10={running && packet?.bill_items?.some((b) => b.icd10_codes.length === 0)}
-        />
-        <ClearinghousePanel agentStates={agentStates} agentResults={agentResults} decision={decision} />
-        <InsurancePanel packet={packet} decision={decision} />
-      </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 flex-1 min-h-[600px]">
+          <ClinicPanel
+            packet={packet}
+            highlightMissingIcd10={running && packet?.bill_items?.some((b) => b.icd10_codes.length === 0)}
+            decision={decision}
+            issues={agentResults[3]}
+            findings={agentResults[1]}
+            onApplyFix={handleApplyFix}
+            fixBusy={fixBusy}
+          />
+          <ClearinghousePanel agentStates={agentStates} agentResults={agentResults} decision={decision} />
+          <InsurancePanel packet={packet} decision={decision} />
+        </div>
+      </main>
 
       <NarratorOverlay step={narrator?.text} stepNumber={narrator?.stepNumber} />
 
-      <AegisFixModal
-        open={fixModalOpen}
-        issues={agentResults[3]}
-        findings={agentResults[1]}
-        onApply={handleApplyFix}
-        onClose={() => setFixModalOpen(false)}
-        busy={fixBusy}
-      />
-
-      <footer className="text-center text-[11px] text-aegis-muted/60 mt-2">
-        AegisBilling.ai · Multi-Agent + Graph RAG · Backend Python/FastAPI · Frontend React/Vite · LLM: Google Gemini
+      <footer className="border-t border-aegis-border bg-aegis-panel">
+        <div className="max-w-[1440px] mx-auto px-6 py-4 flex items-center justify-between flex-wrap gap-3 text-[11px] text-aegis-muted">
+          <div>
+            © 2026 AegisBilling.ai · HIPAA & GDPR compliant · Multi-Agent + Graph RAG
+          </div>
+          <div>Python/FastAPI · React/Vite</div>
+        </div>
       </footer>
     </div>
   )
