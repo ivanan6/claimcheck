@@ -15,7 +15,7 @@ def _scenario_from_cpts(cpt_codes: List[str]) -> str:
         return "A"
     if "70551" in cpt_codes:
         return "C"
-    if "97110" in cpt_codes:
+    if "97110" in cpt_codes or "PROC-PT-THEREX" in cpt_codes:
         return "D"
     if any(c in cpt_codes for c in ("99396", "85025", "99397")):
         return "B"
@@ -177,8 +177,8 @@ AGENT2_MOCKS = {
     "D": [
         ContractRule(
             rule_id="ART-6.3.1",
-            procedure_cpt="97110",
-            requires_icd10_categories=["S83.x", "M25.x", "Z47.x"],
+            procedure_cpt="PROC-PT-THEREX",
+            requires_icd10_categories=["SYN-DX-KNEE-POSTOP", "SYN-DX-KNEE-PAIN"],
             additional_constraint=(
                 "Claim package must include physician referral and initial physical "
                 "therapy evaluation with treatment plan; more than 4 sessions also "
@@ -191,8 +191,8 @@ AGENT2_MOCKS = {
         ),
         ContractRule(
             rule_id="ART-6.3.1-PROGRESS",
-            procedure_cpt="97110",
-            requires_icd10_categories=["S83.x", "M25.x", "Z47.x"],
+            procedure_cpt="PROC-PT-THEREX",
+            requires_icd10_categories=["SYN-DX-KNEE-POSTOP", "SYN-DX-KNEE-PAIN"],
             additional_constraint="If billing more than 4 sessions, a progress report must also be attached",
             source_quote="If billing more than 4 sessions, a progress report must also be attached",
         ),
@@ -278,7 +278,11 @@ def agent3_mock(
             for d in docs
         )
         has_progress = any("progress" in d for d in docs)
-        quantity = sum(item.quantity for item in bill_items if item.cpt_code == "97110")
+        quantity = sum(
+            item.quantity
+            for item in bill_items
+            if item.cpt_code in ("97110", "PROC-PT-THEREX")
+        )
 
         missing = []
         if not has_referral:
@@ -292,7 +296,7 @@ def agent3_mock(
             return [
                 AuditIssue(
                     severity="error",
-                    line_item_cpt="97110",
+                    line_item_cpt="PROC-PT-THEREX",
                     issue_type="missing_required_documentation",
                     explanation=(
                         "The therapeutic exercise claim has matching CPT and ICD-10 codes, "
@@ -303,7 +307,7 @@ def agent3_mock(
                     suggested_fix={
                         "action": "attach_documents",
                         "documents": missing,
-                        "to_cpt": "97110",
+                        "to_cpt": "PROC-PT-THEREX",
                     },
                 )
             ]

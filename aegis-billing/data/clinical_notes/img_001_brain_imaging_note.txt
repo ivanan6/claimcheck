@@ -1,0 +1,26 @@
+Document type: Neurology visit note
+Patient: Synthetic Patient IMG-001
+Date of service: 2026-05-20
+Author: Neurology clinic
+
+Chief concern:
+Worsening headaches.
+
+History:
+The patient reports frequent frontal headaches for the last month. Episodes last
+two to four hours and are associated with light sensitivity. The patient had a
+brain imaging study two months ago with normal findings, but now reports
+increased intensity and new intermittent visual aura.
+
+Exam:
+Neurological examination is non-focal. Visual fields are intact. No motor
+weakness is detected.
+
+Assessment:
+Worsening headache pattern with new visual aura. Repeat advanced imaging may be
+clinically reasonable if authorized by the payer.
+
+Plan:
+Order advanced brain imaging. Obtain prior authorization before scheduling unless
+symptoms become emergent.
+

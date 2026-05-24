@@ -1,0 +1,36 @@
+SYNTHETIC PAYER ALPHA
+Laboratory Services Coverage Policy
+Policy ID: SPA-LAB-2026-01
+Effective date: 2026-01-01
+
+Important notice:
+This is a synthetic policy created for the AegisBilling.ai demo. It does not
+represent a real payer policy and does not copy proprietary procedure code
+descriptions.
+
+Covered service group:
+- PROC-LAB-CBC: complete blood count panel
+- PROC-LAB-METABOLIC: metabolic chemistry panel
+- PROC-LAB-INFLAM: inflammation marker panel
+
+Medical necessity requirements:
+1. Laboratory services must be ordered by a clinician.
+2. Diagnosis codes and clinical notes must support the reason for testing.
+3. Routine screening tests are covered only when the benefit plan explicitly
+   allows preventive screening.
+
+Required documents:
+- Clinician order or encounter note documenting the test request
+- Diagnosis or symptom supporting the ordered test
+
+Denial rules:
+- A lab claim without a clinician order is denied as incomplete.
+- A lab claim without diagnosis support is denied as not medically necessary.
+- Duplicate tests on the same date require duplicate test justification.
+
+Submission checklist for PROC-LAB-CBC:
+- Clinician order or encounter note attached
+- Diagnosis or symptom supports blood count testing
+- Duplicate test justification attached if another blood count was billed on the
+  same date
+

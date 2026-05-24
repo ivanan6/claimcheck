@@ -1,0 +1,23 @@
+Document type: Physician follow-up note
+Patient: Synthetic Patient PT-002
+Date of service: 2026-05-18
+Author: Orthopedic clinic
+
+Chief concern:
+Right knee pain and limited function after meniscus injury.
+
+History:
+The patient completed one week of therapy after meniscus repair and reports
+gradual improvement. She still has difficulty descending stairs and kneeling.
+
+Exam:
+Right knee flexion is 105 degrees. Quadriceps strength is improving but remains
+below baseline. Mild pain is reproduced with step-down testing.
+
+Assessment:
+Ongoing postoperative rehabilitation need.
+
+Plan:
+Continue supervised therapeutic exercise. Continue home exercise program. The
+physical therapist should document functional goals and progress.
+

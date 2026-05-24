@@ -1,0 +1,53 @@
+SYNTHETIC PAYER ALPHA
+Rehabilitation Services Coverage Policy
+Policy ID: SPA-REHAB-2026-01
+Effective date: 2026-01-01
+
+Important notice:
+This is a synthetic policy created for the AegisBilling.ai demo. It does not
+represent a real payer policy and does not copy proprietary procedure code
+descriptions.
+
+Covered service group:
+- PROC-PT-THEREX: supervised therapeutic exercise and rehabilitation session
+- PROC-PT-MANUAL: supervised manual therapy session
+- PROC-PT-REEDU: supervised neuromuscular re-education session
+
+Medical necessity requirements:
+1. The submitted diagnosis must describe an injury, postoperative recovery,
+   mobility limitation, pain, weakness, or functional impairment that is
+   consistent with rehabilitation services.
+2. The physician note must describe the functional limitation and expected
+   rehabilitation goal.
+3. The planned therapy must be expected to improve function, range of motion,
+   strength, gait, balance, or activities of daily living.
+
+Required documents for initial therapy billing:
+Every claim package for PROC-PT-THEREX, PROC-PT-MANUAL, or PROC-PT-REEDU must
+include all of the following:
+- Physician referral or signed order for therapy
+- Initial physical therapy evaluation
+- Written plan of care with frequency, duration, measurable goals, and treatment
+  modalities
+
+Additional required documents:
+If billing more than four therapy sessions in one claim package, the package
+must also include a progress report showing response to treatment and remaining
+functional limitations.
+
+Denial rules:
+- Claims without a physician referral or signed order are denied as incomplete.
+- Claims without an initial physical therapy evaluation are denied as incomplete.
+- Claims without a written plan of care are denied as insufficient documentation.
+- Claims for more than four sessions without a progress report are denied as
+  insufficient progress documentation.
+- A claim may be medically reasonable but still denied if required attachments
+  are missing.
+
+Submission checklist for PROC-PT-THEREX:
+- Diagnosis supports rehabilitation need
+- Physician referral attached
+- Initial PT evaluation attached
+- Plan of care attached
+- Progress report attached when quantity is greater than 4
+

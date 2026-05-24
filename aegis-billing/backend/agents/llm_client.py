@@ -122,6 +122,9 @@ def _call_ollama_json(system_prompt: str, user_prompt: str, max_tokens: int) -> 
     try:
         return json.loads(content)
     except json.JSONDecodeError as e:
+        repaired = _repair_json_prefix(content)
+        if repaired is not None:
+            return repaired
         # Fallback - try to find the first JSON array/object in the string.
         for start_char, end_char in [("[", "]"), ("{", "}")]:
             start = content.find(start_char)
@@ -134,6 +137,58 @@ def _call_ollama_json(system_prompt: str, user_prompt: str, max_tokens: int) -> 
         raise ValueError(
             f"Cannot parse Ollama JSON response:\n{content[:500]}\nError: {e}"
         )
+
+
+def _repair_json_prefix(content: str) -> Any | None:
+    """Parse the largest complete JSON prefix from a truncated local model response."""
+    starts = [idx for idx in (content.find("["), content.find("{")) if idx != -1]
+    if not starts:
+        return None
+
+    start = min(starts)
+    opening = content[start]
+    closing = "]" if opening == "[" else "}"
+    stack: list[str] = []
+    in_string = False
+    escaped = False
+    last_complete = -1
+
+    for index, char in enumerate(content[start:], start=start):
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+            continue
+
+        if char == '"':
+            in_string = True
+        elif char in "[{":
+            stack.append("]" if char == "[" else "}")
+        elif char in "]}":
+            if not stack or stack[-1] != char:
+                break
+            stack.pop()
+            if not stack and char == closing:
+                last_complete = index + 1
+
+    if last_complete == -1:
+        return None
+
+    candidate = content[start:last_complete]
+    try:
+        parsed = json.loads(candidate)
+    except json.JSONDecodeError:
+        return None
+
+    if isinstance(parsed, dict):
+        for key in ("issues", "problems", "errors"):
+            value = parsed.get(key)
+            if isinstance(value, list):
+                return value
+    return parsed
 
 
 def call_json(system_prompt: str, user_prompt: str, max_tokens: int = 2048) -> Any:

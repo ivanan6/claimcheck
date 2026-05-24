@@ -28,6 +28,8 @@ from agents.llm_client import is_mock_mode
 from mock_data.insurance_contracts import get_contract
 from mock_data.scenarios import SCENARIOS, get_patient_history
 from models import AegisDecision, EDI837Packet
+from rag.retriever import build_policy_context, retrieve_policy_chunks
+from rag.synthea_loader import sample_patients, synthea_summary
 
 load_dotenv()
 
@@ -124,8 +126,16 @@ def _run_full_audit(packet: EDI837Packet) -> AegisDecision:
 
     contract_text = get_contract(packet.insurance_company)
     cpt_codes = [item.cpt_code for item in packet.bill_items]
+    diagnosis_codes = [code for item in packet.bill_items for code in item.icd10_codes]
     narrator_steps.append("Agent 2 (Contract Lawyer) searches the insurance contract...")
-    rules = contract_lawyer.run(contract_text, cpt_codes)
+    rules = contract_lawyer.run(
+        contract_text,
+        cpt_codes,
+        payer=packet.insurance_company,
+        diagnosis_codes=diagnosis_codes,
+        supporting_documents=packet.supporting_documents,
+        doctor_note=packet.doctor_note,
+    )
     narrator_steps.append(
         f"Agent 2 extracted {len(rules)} relevant rules from the contract."
     )
@@ -204,7 +214,16 @@ async def _stream_audit(packet: EDI837Packet) -> AsyncIterator[str]:
     yield _sse_pack("stage", {"stage": "agent2_started", "agent": "contract_lawyer"})
     contract_text = get_contract(packet.insurance_company)
     cpt_codes = [item.cpt_code for item in packet.bill_items]
-    rules = await asyncio.to_thread(contract_lawyer.run, contract_text, cpt_codes)
+    diagnosis_codes = [code for item in packet.bill_items for code in item.icd10_codes]
+    rules = await asyncio.to_thread(
+        contract_lawyer.run,
+        contract_text,
+        cpt_codes,
+        payer=packet.insurance_company,
+        diagnosis_codes=diagnosis_codes,
+        supporting_documents=packet.supporting_documents,
+        doctor_note=packet.doctor_note,
+    )
     yield _sse_pack(
         "agent_result",
         {
@@ -282,6 +301,15 @@ class ApplyFixRequest(BaseModel):
     fixes: list[dict]
 
 
+class RagSearchRequest(BaseModel):
+    payer: str = "Synthetic Payer Alpha"
+    procedure_codes: list[str]
+    diagnosis_codes: list[str] = []
+    supporting_documents: list[str] = []
+    doctor_note: str = ""
+    top_k: int = 5
+
+
 @app.post("/api/clinic/apply-fix", response_model=EDI837Packet)
 def apply_fix(req: ApplyFixRequest):
     """
@@ -315,6 +343,43 @@ def apply_fix(req: ApplyFixRequest):
 
     _FIXED_PACKETS[req.scenario_id] = packet
     return packet
+
+
+@app.post("/api/rag/search")
+def rag_search(req: RagSearchRequest):
+    """Return the policy chunks the local RAG retriever would send to Agent 2."""
+    results = retrieve_policy_chunks(
+        payer=req.payer,
+        procedure_codes=req.procedure_codes,
+        diagnosis_codes=req.diagnosis_codes,
+        supporting_documents=req.supporting_documents,
+        doctor_note=req.doctor_note,
+        top_k=req.top_k,
+    )
+    return {
+        "count": len(results),
+        "context": build_policy_context(results),
+        "chunks": [
+            {
+                "chunk_id": result.chunk.chunk_id,
+                "source": result.chunk.source,
+                "payer": result.chunk.payer,
+                "score": round(result.score, 3),
+                "matched_terms": list(result.matched_terms),
+                "text": result.chunk.text,
+            }
+            for result in results
+        ],
+    }
+
+
+@app.get("/api/synthea/summary")
+def get_synthea_summary():
+    """Return a small summary proving the local Synthea CSV sample is available."""
+    return {
+        **synthea_summary(),
+        "sample_patients": sample_patients(limit=5),
+    }
 
 
 # ============================================================================

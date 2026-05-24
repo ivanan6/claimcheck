@@ -1,0 +1,51 @@
+SYNTHETIC PAYER ALPHA
+Advanced Diagnostic Imaging Coverage Policy
+Policy ID: SPA-IMG-2026-01
+Effective date: 2026-01-01
+
+Important notice:
+This is a synthetic policy created for the AegisBilling.ai demo. It does not
+represent a real payer policy and does not copy proprietary procedure code
+descriptions.
+
+Covered service group:
+- PROC-IMG-MRI-BRAIN: advanced brain imaging study
+- PROC-IMG-MRI-KNEE: advanced knee imaging study
+- PROC-IMG-CT-ABD: advanced abdominal imaging study
+
+Medical necessity requirements:
+1. The diagnosis and physician note must support the requested imaging study.
+2. The note should describe symptoms, duration, physical examination findings,
+   prior conservative treatment when applicable, and the clinical question to be
+   answered by imaging.
+3. Imaging performed only for screening or patient preference is not covered.
+
+Prior authorization requirements:
+Every claim package for PROC-IMG-MRI-BRAIN, PROC-IMG-MRI-KNEE, or
+PROC-IMG-CT-ABD must include a prior authorization approval identifier unless the
+service was provided during an emergency encounter.
+
+Required documents:
+- Physician imaging order
+- Clinical note supporting medical necessity
+- Prior authorization approval document or emergency exception statement
+
+Recent duplicate imaging rule:
+If the same advanced imaging service was performed within the last 180 days, the
+claim package must include a repeat-imaging justification. The justification must
+explain the change in symptoms, failed treatment, new neurological findings,
+trauma, surgical planning need, or other clinical reason for repeating the study.
+
+Denial rules:
+- Claims without prior authorization are denied unless an emergency exception is
+  documented.
+- Repeat advanced imaging within 180 days without justification is denied.
+- Claims without the physician imaging order are denied as incomplete.
+
+Submission checklist for PROC-IMG-MRI-BRAIN:
+- Diagnosis supports neurological or brain-related indication
+- Physician imaging order attached
+- Clinical note attached
+- Prior authorization approval attached
+- Repeat-imaging justification attached if same imaging was done within 180 days
+

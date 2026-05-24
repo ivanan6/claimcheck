@@ -1,0 +1,14 @@
+Document type: Physician referral / signed therapy order
+Patient: Synthetic Patient PT-002
+Date: 2026-05-18
+
+Order:
+Supervised physical therapy for postoperative right knee rehabilitation.
+Frequency: two visits per week.
+Duration: three weeks.
+Goals: improve knee range of motion, quadriceps strength, gait mechanics, and
+stair tolerance.
+
+Signed by:
+Orthopedic clinician
+

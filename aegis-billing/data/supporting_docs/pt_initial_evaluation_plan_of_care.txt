@@ -1,0 +1,24 @@
+Document type: Initial physical therapy evaluation and plan of care
+Patient: Synthetic Patient PT-002
+Date: 2026-05-19
+
+Evaluation:
+The patient presents with right knee pain, reduced flexion, quadriceps weakness,
+and impaired stair descent after meniscus repair.
+
+Objective findings:
+- Knee flexion: 102 degrees
+- Quadriceps strength: 4-/5
+- Pain: 4/10 with stairs
+- Functional limitation: stair descent and kneeling
+
+Plan of care:
+Therapeutic exercise twice weekly for three weeks. Treatment will include range
+of motion work, progressive strengthening, gait mechanics, stair training, and
+home exercise instruction.
+
+Measurable goals:
+- Knee flexion to at least 120 degrees
+- Quadriceps strength to 4+/5
+- Descend one flight of stairs with pain 2/10 or less
+

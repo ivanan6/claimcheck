@@ -6,7 +6,7 @@ Scenario A (hero) - nurse forgot the ICD-10 code for stomach pain.
 Scenario B (clean) - everything is fine, passes through the pipeline in seconds.
 Scenario C (graph rag hero) - brain MRI requested before contract's 6-month limit.
                               Agent 2 catches the rule violation from the contract.
-Scenario D (missing documents) - bill has the right CPT and ICD-10, but the claim
+Scenario D (missing documents) - bill has the right procedure and diagnosis codes, but the claim
                                  package is missing policy-required attachments.
 """
 from models import BillLineItem, EDI837Packet, Patient
@@ -143,9 +143,9 @@ def scenario_d_missing_documents() -> EDI837Packet:
         ),
         bill_items=[
             BillLineItem(
-                cpt_code="97110",
-                description="Therapeutic exercises to develop strength and range of motion",
-                icd10_codes=["S83.241D", "M25.561"],
+                cpt_code="PROC-PT-THEREX",
+                description="Synthetic supervised therapeutic exercise session",
+                icd10_codes=["SYN-DX-KNEE-POSTOP", "SYN-DX-KNEE-PAIN"],
                 unit_price_eur=45.00,
                 quantity=6,
             ),
@@ -154,7 +154,7 @@ def scenario_d_missing_documents() -> EDI837Packet:
             "orthopedic_followup_note.pdf",
             "invoice_line_items.csv",
         ],
-        insurance_company="Global Health Insurance",
+        insurance_company="Synthetic Payer Alpha",
         submitted_at="2026-05-24T10:06:12Z",
     )
 

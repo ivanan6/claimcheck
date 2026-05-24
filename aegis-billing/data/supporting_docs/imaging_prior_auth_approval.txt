@@ -1,0 +1,14 @@
+Document type: Prior authorization approval
+Patient: Synthetic Patient IMG-002
+Date: 2026-05-21
+
+Authorization:
+Advanced brain imaging approved for worsening headache pattern with new visual
+aura.
+
+Authorization ID:
+AUTH-SYN-2026-IMG-002
+
+Valid through:
+2026-06-21
+

@@ -77,11 +77,22 @@ aegis-billing/
 │   ├── agents/
 │   │   ├── llm_client.py          # Google Gen AI SDK wrapper (Gemini)
 │   │   ├── medical_coder.py       # Agent 1 - reads physician notes
-│   │   ├── contract_lawyer.py     # Agent 2 - Graph RAG over the contract
+│   │   ├── contract_lawyer.py     # Agent 2 - RAG over payer policies
 │   │   └── auditor.py             # Agent 3 - cross-checking
+│   ├── rag/
+│   │   ├── retriever.py           # Local policy chunk retrieval
+│   │   ├── inspect.py             # CLI retrieval debugger
+│   │   └── synthea_loader.py      # Lightweight Synthea CSV reader
 │   └── mock_data/
-│       ├── scenarios.py           # 3 prepared scenarios
+│       ├── scenarios.py           # 4 prepared scenarios
 │       └── insurance_contracts.py # Mock insurance contract
+│
+├── data/
+│   ├── policies/                  # Synthetic payer policy docs for RAG
+│   ├── claims/                    # Synthetic claim packages
+│   ├── clinical_notes/            # Synthetic physician notes
+│   ├── supporting_docs/           # Synthetic attachments
+│   └── synthea_csv/               # Local Synthea CSV sample (ignored by git)
 │
 └── frontend/
     ├── index.html
@@ -111,11 +122,47 @@ aegis-billing/
    `GET /api/clearinghouse/intercept-stream/{id}`.
 3. Backend calls Agent 1 (Gemini) -> emits `agent_result` -> frontend displays
    findings; the same happens for Agent 2 and Agent 3.
-4. Backend emits `decision` -> frontend displays the final outcome
+4. Agent 2 retrieves relevant chunks from `data/policies/*.txt`, sends only
+   those excerpts to the LLM, and extracts payer rules.
+5. Backend emits `decision` -> frontend displays the final outcome
    (`approved` / `rejected`) in `InsurancePanel`.
-5. If rejected -> `AegisFixModal` opens with **1-Click Auto-Fill**.
-6. Click auto-fill -> `POST /api/clinic/apply-fix` -> applies ICD-10 codes ->
+6. If rejected -> `AegisFixModal` opens with **1-Click Auto-Fill**.
+7. Click auto-fill -> `POST /api/clinic/apply-fix` -> applies ICD-10 codes ->
    reruns all 3 agents -> this time the claim is approved.
+
+### Local RAG
+
+The demo now has a local file-based RAG layer:
+
+- `data/policies/*.txt` are treated as the payer knowledge base.
+- `backend/rag/retriever.py` chunks those policies by section.
+- The retriever scores chunks using payer, procedure codes, diagnosis codes,
+  attached documents, and physician note text.
+- `contract_lawyer.py` sends only the top retrieved chunks to the LLM.
+
+Inspect retrieval manually:
+
+```bash
+cd aegis-billing
+PYTHONPATH=backend backend/.venv/bin/python -m rag.inspect \
+  --payer "Synthetic Payer Alpha" \
+  --procedure PROC-PT-THEREX \
+  --top-k 3
+```
+
+Check that the Synthea CSV sample is visible:
+
+```bash
+curl http://localhost:8000/api/synthea/summary
+```
+
+Search retrieved policy chunks through the API:
+
+```bash
+curl -X POST http://localhost:8000/api/rag/search \
+  -H "Content-Type: application/json" \
+  -d '{"payer":"Synthetic Payer Alpha","procedure_codes":["PROC-PT-THEREX"],"top_k":3}'
+```
 
 ---
 

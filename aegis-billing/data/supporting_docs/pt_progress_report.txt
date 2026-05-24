@@ -1,0 +1,17 @@
+Document type: Physical therapy progress report
+Patient: Synthetic Patient PT-002
+Date: 2026-05-27
+
+Progress:
+The patient completed five therapy sessions. Knee flexion improved from 102
+degrees to 116 degrees. Quadriceps strength improved from 4-/5 to 4/5. Stair
+descent remains painful but improved.
+
+Remaining limitations:
+Pain with repeated stairs and kneeling. Reduced endurance with prolonged
+standing.
+
+Recommendation:
+Continue the current plan through the sixth session and reassess for discharge
+to home exercise program.
+

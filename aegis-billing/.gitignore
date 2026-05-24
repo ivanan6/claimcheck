@@ -14,6 +14,10 @@ node_modules/
 dist/
 .vite/
 
+# Local demo datasets
+data/synthea_csv/*.csv
+!data/synthea_csv/.gitkeep
+
 # IDE
 .vscode/
 .idea/

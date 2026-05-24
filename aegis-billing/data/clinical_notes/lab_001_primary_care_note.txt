@@ -1,0 +1,23 @@
+Document type: Primary care visit note
+Patient: Synthetic Patient LAB-001
+Date of service: 2026-05-22
+Author: Primary care clinic
+
+Chief concern:
+Fatigue.
+
+History:
+The patient reports fatigue for six weeks and occasional lightheadedness. No
+chest pain or shortness of breath. Diet has been inconsistent during recent work
+travel.
+
+Exam:
+Vital signs are stable. Mild conjunctival pallor is noted. Cardiac and pulmonary
+exams are normal.
+
+Assessment:
+Fatigue with possible anemia or metabolic cause.
+
+Plan:
+Order blood count and metabolic laboratory panel. Follow up after results.
+

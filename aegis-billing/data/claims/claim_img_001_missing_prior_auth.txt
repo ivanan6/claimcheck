@@ -1,0 +1,25 @@
+Claim package: CLAIM-IMG-001
+Payer: Synthetic Payer Alpha
+Patient: Synthetic Patient IMG-001
+Date submitted: 2026-05-24
+
+Procedure lines:
+- Procedure ID: PROC-IMG-MRI-BRAIN
+  Description: Synthetic advanced brain imaging study
+  Diagnosis codes: SYN-DX-HEADACHE-WORSENING, SYN-DX-VISUAL-AURA
+  Quantity: 1
+  Unit price EUR: 320.00
+
+Attached documents:
+- clinical_notes/img_001_brain_imaging_note.txt
+- imaging_order.txt
+
+Patient history:
+- Same advanced brain imaging service performed on 2026-03-15 with normal
+  findings.
+
+Expected Aegis result:
+Block before insurance submission. The policy requires prior authorization for
+advanced imaging and repeat-imaging justification when the same service was
+performed within 180 days.
+

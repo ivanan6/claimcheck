@@ -27,28 +27,28 @@ from .llm_client import call_json, is_mock_mode
 # from the contract. Covers rules like the MRI 6-month limit.
 _DEFAULT_PROCEDURE_COOLDOWN_DAYS = 180
 
-SYSTEM_PROMPT = """You are a healthcare bill auditor. Your task is to compare:
-1. Clinical findings extracted from the physician note (what was ACTUALLY found in the patient)
-2. Insurance contract rules (what insurance REQUIRES for payment)
-3. Bill line items entered by front-desk staff (what was ACTUALLY entered on the bill)
-4. Patient history (previous procedures)
-5. Supporting documents already attached to the claim package
+SYSTEM_PROMPT = """You are a healthcare claim auditor.
 
-Your goal is to detect WHETHER there is a mismatch or missing requirement and suggest the exact correction.
+Return ONLY a valid JSON array. No markdown. No wrapper object.
+Return at most 3 issues. If there are no issues, return [].
 
-Return a valid JSON array of objects with the following fields:
-- severity: "error" or "warning"
-- line_item_cpt: CPT code of the line item the problem applies to
-- issue_type: one of: "missing_icd10_justification", "icd10_procedure_mismatch", \
-"contract_limit_violation", "duplicate_billing", "missing_required_documentation"
-- explanation: clear explanation of what is wrong in English
-- suggested_fix: object with a concrete action, e.g.:
-    {"action": "add_icd10", "codes": ["R10.9"], "to_cpt": "76700"}
-    {"action": "remove_line", "cpt": "70551"}
-    {"action": "request_documentation", "details": "..."}
-    {"action": "attach_documents", "documents": ["physician referral"], "to_cpt": "97110"}
+Allowed issue_type values:
+- missing_icd10_justification
+- icd10_procedure_mismatch
+- contract_limit_violation
+- duplicate_billing
+- missing_required_documentation
 
-If there are NO problems, return an empty array: []"""
+Object shape:
+{
+  "severity": "error" or "warning",
+  "line_item_cpt": "procedure code",
+  "issue_type": "one allowed value",
+  "explanation": "short English sentence",
+  "suggested_fix": {"action": "..."}
+}
+
+Use missing_required_documentation when required attachments are missing."""
 
 
 def _deterministic_checks(
@@ -122,7 +122,7 @@ def _deterministic_checks(
     # Check 3: physical therapy claims often fail because required attachments
     # are missing even when CPT and ICD-10 codes are correct.
     for item in bill_items:
-        if item.cpt_code != "97110":
+        if item.cpt_code not in ("97110", "PROC-PT-THEREX"):
             continue
 
         missing_docs: list[str] = []
@@ -169,15 +169,43 @@ def _deterministic_checks(
 def _merge_issues(*lists: List[AuditIssue]) -> List[AuditIssue]:
     """Merge issues from multiple sources and deduplicate by (issue_type, line_item_cpt)."""
     seen: set[tuple[str, str]] = set()
+    missing_doc_cpts: set[str] = set()
     merged: List[AuditIssue] = []
     for issues in lists:
         for issue in issues:
+            if (
+                issue.issue_type == "contract_limit_violation"
+                and issue.line_item_cpt in missing_doc_cpts
+            ):
+                continue
             key = (issue.issue_type, issue.line_item_cpt)
             if key in seen:
                 continue
             seen.add(key)
             merged.append(issue)
+            if issue.issue_type == "missing_required_documentation":
+                missing_doc_cpts.add(issue.line_item_cpt)
     return merged
+
+
+def _has_contract_limit_evidence(issue: AuditIssue, patient_history: dict) -> bool:
+    previous = patient_history.get("previous_procedures", [])
+    if any(prev.get("cpt") == issue.line_item_cpt for prev in previous):
+        return True
+
+    text = f"{issue.explanation} {issue.suggested_fix}".lower()
+    return any(
+        marker in text
+        for marker in (
+            "previous",
+            "repeat",
+            "already had",
+            "180",
+            "6 months",
+            "six months",
+            "prior authorization",
+        )
+    )
 
 
 def run(
@@ -218,21 +246,32 @@ def run(
     )
 
     try:
-        raw = call_json(SYSTEM_PROMPT, user_prompt, max_tokens=2048)
+        raw = call_json(SYSTEM_PROMPT, user_prompt, max_tokens=768)
     except Exception as e:
         # If the LLM fails, deterministic checks still proceed.
         print(f"[auditor] LLM call failed: {e}", flush=True)
         return deterministic
 
-    if isinstance(raw, dict) and "issues" in raw:
-        raw = raw["issues"]
+    if isinstance(raw, dict):
+        if "issues" in raw:
+            raw = raw["issues"]
+        elif "problems" in raw:
+            raw = raw["problems"]
+        elif "errors" in raw:
+            raw = raw["errors"]
     if not isinstance(raw, list):
         raw = [raw] if raw else []
 
     llm_issues: List[AuditIssue] = []
     for item in raw:
         try:
-            llm_issues.append(AuditIssue(**item))
+            issue = AuditIssue(**item)
+            if (
+                issue.issue_type == "contract_limit_violation"
+                and not _has_contract_limit_evidence(issue, patient_history)
+            ):
+                continue
+            llm_issues.append(issue)
         except Exception:
             continue
 

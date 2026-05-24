@@ -1,0 +1,24 @@
+Claim package: CLAIM-LAB-001
+Payer: Synthetic Payer Alpha
+Patient: Synthetic Patient LAB-001
+Date submitted: 2026-05-24
+
+Procedure lines:
+- Procedure ID: PROC-LAB-CBC
+  Description: Synthetic blood count panel
+  Diagnosis codes: SYN-DX-FATIGUE, SYN-DX-POSSIBLE-ANEMIA
+  Quantity: 1
+  Unit price EUR: 25.00
+- Procedure ID: PROC-LAB-METABOLIC
+  Description: Synthetic metabolic chemistry panel
+  Diagnosis codes: SYN-DX-FATIGUE
+  Quantity: 1
+  Unit price EUR: 35.00
+
+Attached documents:
+- clinical_notes/lab_001_primary_care_note.txt
+
+Expected Aegis result:
+Ready to send to insurance. The clinician note documents fatigue, possible
+anemia or metabolic cause, and the lab order.
+

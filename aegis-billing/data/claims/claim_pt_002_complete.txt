@@ -1,0 +1,23 @@
+Claim package: CLAIM-PT-002
+Payer: Synthetic Payer Alpha
+Patient: Synthetic Patient PT-002
+Date submitted: 2026-05-24
+
+Procedure lines:
+- Procedure ID: PROC-PT-THEREX
+  Description: Synthetic supervised therapeutic exercise session
+  Diagnosis codes: SYN-DX-KNEE-POSTOP, SYN-DX-KNEE-PAIN
+  Quantity: 6
+  Unit price EUR: 45.00
+
+Attached documents:
+- clinical_notes/pt_002_knee_rehab_followup_note.txt
+- supporting_docs/pt_referral_order.txt
+- supporting_docs/pt_initial_evaluation_plan_of_care.txt
+- supporting_docs/pt_progress_report.txt
+- invoice_line_items.csv
+
+Expected Aegis result:
+Ready to send to insurance. The policy-required referral, initial evaluation,
+plan of care, and progress report are attached.
+

@@ -1,0 +1,28 @@
+Document type: Physician follow-up note
+Patient: Synthetic Patient PT-001
+Date of service: 2026-05-18
+Author: Orthopedic clinic
+
+Chief concern:
+Right knee stiffness and pain after arthroscopic meniscus repair.
+
+History:
+The patient is three weeks after arthroscopic repair of the right medial
+meniscus. He reports stiffness, reduced knee flexion, difficulty using stairs,
+and pain after prolonged standing. He denies fever, wound drainage, or new
+trauma.
+
+Exam:
+Right knee incision sites are healed. Flexion is limited to approximately 95
+degrees. Quadriceps activation is reduced compared with the left side. Mild
+effusion is present. Gait is antalgic without assistive device.
+
+Assessment:
+Postoperative right knee rehabilitation need with pain, reduced range of motion,
+and quadriceps weakness.
+
+Plan:
+Recommend supervised physical therapy twice weekly for three weeks. Therapy
+should focus on range of motion, quadriceps strengthening, gait mechanics, and
+safe stair use. Reassess after the initial therapy block.
+
