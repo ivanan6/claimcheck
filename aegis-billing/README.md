@@ -1,4 +1,4 @@
-# AegisBilling.ai - Demo (pitch)
+# RedShield
 
 Live demo version of the AegisBilling.ai system: an **AI filter inside a
 clearinghouse** that intercepts healthcare claims before they reach the insurer,
